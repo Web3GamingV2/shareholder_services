@@ -2,24 +2,51 @@
 CREATE EXTENSION IF NOT EXISTS moddatetime WITH SCHEMA extensions;
 
 -- 首先创建自定义类型
-CREATE TYPE public.wallet_type AS ENUM ('EOA', 'Safe', 'Centralized Custody');
+CREATE TYPE public.wallet_type AS ENUM ('EOA', 'Safe', 'Centralized');
 
 -- 创建 profiles 表
 CREATE TABLE public.profiles (
-  id uuid NOT NULL PRIMARY KEY REFERENCES auth.users ON DELETE CASCADE, -- 直接关联 Supabase auth 用户 ID
-  wallet_address text NOT NULL UNIQUE, -- 用户的主要钱包地址 (EOA, Safe, 或托管标识符)
-  wallet_type public.wallet_type DEFAULT 'EOA'::public.wallet_type NOT NULL, -- ENUM 类型: 'EOA', 'Safe', 'Centralized Custody'
-  display_name text NULL, -- 用户昵称 (可选)
-  email text NULL UNIQUE, -- 用户邮箱 (可选, 可能来自 auth.users)
-  is_otp_enabled boolean DEFAULT false NOT NULL, -- 是否启用了 OTP
-  otp_secret text NULL, -- 加密后的 OTP 密钥 (仅在 is_otp_enabled 为 true 时有值)
-  last_login_at timestamptz NULL, -- 上次登录时间
-  created_at timestamptz DEFAULT timezone('utc'::text, now()) NOT NULL,
-  updated_at timestamptz DEFAULT timezone('utc'::text, now()) NOT NULL
+  -- 用户 ID，关联 auth.users 表的主键
+  id uuid NOT NULL PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
+
+  -- 用户主要的 EVM 兼容钱包地址 (例如 MetaMask)
+  primary_wallet_address TEXT NULL UNIQUE CHECK (primary_wallet_address ~ '^0x[a-fA-F0-9]{40}$'), -- 调整为允许 NULL，并保留格式校验
+
+  -- 钱包类型
+  wallet_type public.wallet_type DEFAULT 'EOA'::public.wallet_type NOT NULL,
+
+  -- 用户的 TRON 钱包地址 (用于接收赎回的 USDT)
+  tron_address TEXT NULL UNIQUE, -- 从第一版 schema 中添加
+
+  -- 用户昵称 (可选)
+  display_name TEXT NULL,
+
+  -- 用户邮箱 (可选, 可能来自 auth.users)
+  email TEXT NULL UNIQUE,
+
+  -- 是否启用了 OTP
+  is_otp_enabled BOOLEAN DEFAULT false NOT NULL,
+
+  -- 加密后的 OTP 密钥 (仅在 is_otp_enabled 为 true 时有值)
+  otp_secret TEXT NULL,
+
+  -- 上次登录时间
+  last_login_at TIMESTAMPTZ NULL,
+
+  -- 记录创建时间戳
+  created_at TIMESTAMPTZ DEFAULT timezone('utc'::text, now()) NOT NULL,
+
+  -- 记录最后更新时间戳
+  updated_at TIMESTAMPTZ DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
--- 为 wallet_address 创建索引以优化查询
-CREATE INDEX idx_profiles_wallet_address ON public.profiles(wallet_address);
+-- 为 primary_wallet_address 创建索引以优化查询 (如果经常用它查询)
+CREATE INDEX idx_profiles_primary_wallet_address ON public.profiles(primary_wallet_address);
+-- 为 tron_address 创建索引 (如果需要)
+-- CREATE INDEX idx_profiles_tron_address ON public.profiles(tron_address);
+-- 为 email 创建索引 (如果需要)
+-- CREATE INDEX idx_profiles_email ON public.profiles(email);
+
 
 -- 启用行级安全 (RLS)
 ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
@@ -35,34 +62,46 @@ CREATE POLICY "Users can update their own profile."
   USING (auth.uid() = id)
   WITH CHECK (auth.uid() = id);
 
--- 确保 moddatetime 扩展已启用 (通常 Supabase 项目默认启用)
--- 如果执行迁移时报错说 moddatetime 不存在，你可能需要在 Supabase SQL 编辑器中运行:
--- CREATE EXTENSION IF NOT EXISTS moddatetime;
-
 -- 创建触发器，在更新 profile 时自动更新 updated_at 时间戳
 CREATE TRIGGER handle_updated_at BEFORE UPDATE ON public.profiles
-  FOR EACH ROW EXECUTE PROCEDURE moddatetime (updated_at);
+  FOR EACH ROW EXECUTE PROCEDURE extensions.moddatetime (updated_at); -- 使用 extensions schema 下的 moddatetime
 
--- 可选: 如果你想在 auth.users 创建新用户时自动创建 profile 记录，
--- 你需要先创建一个函数，然后创建一个触发器。
--- 注意: 这个示例假设 wallet_address 可以从用户的元数据中获取，
--- 或者你需要在用户注册流程的其他地方处理 profile 的创建。
--- 1. 创建函数
-create function public.handle_new_user()
-returns trigger
-language plpgsql
-security definer set search_path = public
-as $$
-begin
-  -- 尝试从 auth.users 的 raw_user_meta_data 插入，你需要确保注册时提供了 wallet_address
-  -- 如果 wallet_address 不是必须立即提供的，可以只插入 id，后续再更新
-  insert into public.profiles (id, wallet_address)
-  values (new.id, coalesce(new.raw_user_meta_data->>'wallet_address', 'default_or_placeholder_address')); -- 提供一个默认值或占位符
-  return new;
-end;
+-- 函数：在新用户注册时自动创建 profile 记录
+CREATE OR REPLACE FUNCTION public.handle_new_user()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SECURITY DEFINER SET search_path = public
+AS $$
+BEGIN
+  -- 插入新用户的 profile 记录，只包含 id，其他字段留待用户后续更新
+  -- 或者尝试从 new.raw_user_meta_data 获取初始值
+  INSERT INTO public.profiles (id, email, primary_wallet_address) -- 添加 email 和 primary_wallet_address
+  VALUES (
+    new.id,
+    new.email, -- 直接从 auth.users 获取 email
+    new.raw_user_meta_data->>'primary_wallet_address' -- 尝试从元数据获取钱包地址
+    -- 如果元数据中没有，primary_wallet_address 会是 NULL
+  );
+  RETURN new;
+END;
 $$;
 
--- 2. 创建触发器
-create trigger on_auth_user_created
-  after insert on auth.users
-  for each row execute procedure public.handle_new_user();
+-- 触发器：在 auth.users 表插入新记录后执行 handle_new_user 函数
+CREATE TRIGGER on_auth_user_created
+  AFTER INSERT ON auth.users
+  FOR EACH ROW EXECUTE PROCEDURE public.handle_new_user();
+
+
+-- 添加表和列的注释
+COMMENT ON TABLE public.profiles IS '存储用户的扩展信息，关联 auth.users 表';
+COMMENT ON COLUMN public.profiles.id IS '关联 auth.users.id';
+COMMENT ON COLUMN public.profiles.primary_wallet_address IS '用户主要的 EVM 兼容钱包地址 (如 MetaMask)';
+COMMENT ON COLUMN public.profiles.wallet_type IS '钱包类型 (EOA, Safe, Centralized)';
+COMMENT ON COLUMN public.profiles.tron_address IS '用户的 TRON 钱包地址 (用于接收赎回)';
+COMMENT ON COLUMN public.profiles.display_name IS '用户昵称';
+COMMENT ON COLUMN public.profiles.email IS '用户的邮箱地址';
+COMMENT ON COLUMN public.profiles.is_otp_enabled IS '是否启用了 OTP 双因素认证';
+COMMENT ON COLUMN public.profiles.otp_secret IS '加密存储的 OTP 密钥';
+COMMENT ON COLUMN public.profiles.last_login_at IS '用户最后登录时间';
+COMMENT ON COLUMN public.profiles.created_at IS '记录创建时间 (UTC)';
+COMMENT ON COLUMN public.profiles.updated_at IS '记录最后更新时间 (UTC)';
