@@ -2,7 +2,7 @@
  * @Author: leelongxi leelongxi@foxmail.com
  * @Date: 2025-04-13 23:58:49
  * @LastEditors: leelongxi leelongxi@foxmail.com
- * @LastEditTime: 2025-04-20 12:56:52
+ * @LastEditTime: 2025-04-20 14:17:25
  * @FilePath: /sbng_cake/shareholder_services/src/app.module.ts
  * @Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查看配置 进行设置: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
  */
@@ -14,6 +14,8 @@ import { AppService } from './app.service';
 import { SupabaseModule } from './supabase/supabase.module';
 import { AuthService } from './auth/auth.service';
 import { AuthModule } from './auth/auth.module';
+import { RedisService } from './redis/redis.service';
+import { RedisModule } from './redis/redis.module';
 
 const envFilePath = [`.env.${process.env.NODE_ENV || 'development'}`, '.env'];
 
@@ -30,12 +32,15 @@ const envFilePath = [`.env.${process.env.NODE_ENV || 'development'}`, '.env'];
         SUPABASE_URL: Joi.string().required(),
         SUPABASE_KEY: Joi.string().required(),
         SUPABASE_JWT_SECRET: Joi.string().required(),
+        UPSTASH_REDIS_REST_URL: Joi.string().required(),
+        UPSTASH_REDIS_REST_TOKEN: Joi.string().required(),
       }),
     }),
     SupabaseModule,
     AuthModule,
+    RedisModule,
   ],
   controllers: [AppController],
-  providers: [AppService, AuthService],
+  providers: [AppService, AuthService, RedisService],
 })
 export class AppModule {}

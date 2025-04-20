@@ -9,8 +9,8 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { SupabaseService } from 'src/supabase/supabase.service';
-import { VerifyInviteDto } from './dtos/verify-invite.dto';
-import { LoginDto } from './dtos/login.dto';
+import { VerifyInviteDto } from '../dtos/verify-invite.dto';
+import { LoginDto } from '../dtos/login.dto';
 
 @Injectable()
 export class AuthService {

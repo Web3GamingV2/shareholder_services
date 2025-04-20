@@ -15,8 +15,8 @@ import {
   ValidationPipe,
 } from '@nestjs/common';
 import { AuthService } from './auth.service';
-import { VerifyInviteDto } from './dtos/verify-invite.dto';
-import { LoginDto } from './dtos/login.dto';
+import { VerifyInviteDto } from '../dtos/verify-invite.dto';
+import { LoginDto } from '../dtos/login.dto';
 
 @Controller('auth')
 export class AuthController {
