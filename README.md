@@ -2,11 +2,10 @@
  * @Author: leelongxi leelongxi@foxmail.com
  * @Date: 2025-04-13 23:58:49
  * @LastEditors: leelongxi leelongxi@foxmail.com
- * @LastEditTime: 2025-04-18 16:52:16
+ * @LastEditTime: 2025-04-20 13:28:27
  * @FilePath: /shareholder_services/README.md
  * @Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查看配置 进行设置: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
 -->
-ae3vSZwg9cu4Onw6
 
 ```sql
 DELETE FROM supabase_migrations.schema_migrations WHERE version = '20250418075725';
