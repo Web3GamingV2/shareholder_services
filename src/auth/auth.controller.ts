@@ -17,10 +17,10 @@ import {
   ValidationPipe,
 } from '@nestjs/common';
 import { AuthService } from './auth.service';
-import { LoginDto } from '../dtos/login.dto';
-import { NonceRequestDto } from 'src/dtos/nonce-request.dto';
+import { LoginDto } from '../common/dtos/login.dto';
+import { NonceRequestDto } from 'src/common/dtos/nonce-request.dto';
 import { BaseResponse } from 'src/common/base';
-import { ActivateDto } from 'src/dtos/activate.dto';
+import { ActivateDto } from 'src/common/dtos/activate.dto';
 
 @Controller('auth')
 export class AuthController {

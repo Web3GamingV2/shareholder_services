@@ -9,12 +9,12 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { SupabaseService } from 'src/supabase/supabase.service';
-import { VerifyInviteDto } from '../dtos/verify-invite.dto';
-import { LoginDto } from '../dtos/login.dto';
+import { VerifyInviteDto } from '../common/dtos/verify-invite.dto';
+import { LoginDto } from '../common/dtos/login.dto';
 import { generateNonce, SiweMessage } from 'siwe';
 import { RedisService } from 'src/redis/redis.service';
 import { BaseController, BaseResponse } from 'src/common/base';
-import { ActivateDto } from 'src/dtos/activate.dto';
+import { ActivateDto } from 'src/common/dtos/activate.dto';
 
 @Injectable()
 export class AuthService extends BaseController {
