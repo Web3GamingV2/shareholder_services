@@ -25,6 +25,9 @@
     "@nestjs/core": "^10.0.0",
     "@nestjs/passport": "^11.0.5",
     "@nestjs/platform-express": "^10.0.0",
+    "@safe-global/api-kit": "^3.0.1",
+    "@safe-global/protocol-kit": "^6.0.3",
+    "@safe-global/types-kit": "^2.0.1",
     "@supabase/supabase-js": "^2.49.4",
     "@upstash/redis": "^1.34.8",
     "class-transformer": "^0.5.1",
@@ -36,7 +39,8 @@
     "passport-jwt": "^4.0.1",
     "reflect-metadata": "^0.1.13",
     "rxjs": "^7.8.1",
-    "siwe": "^3.0.0"
+    "siwe": "^3.0.0",
+    "viem": "^2.27.2"
   },
   "devDependencies": {
     "@nestjs/cli": "^10.0.0",
