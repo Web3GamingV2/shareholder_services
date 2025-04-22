@@ -20,6 +20,11 @@ import { UsersModule } from './users/users.module';
 import { MoralisService } from './moralis/moralis.service';
 import { MoralisModule } from './moralis/moralis.module';
 import { TheGraphModule } from './the-graph/the-graph.module';
+import { SignService } from './sign/sign.service';
+import { SignModule } from './sign/sign.module';
+import { InviteController } from './invite/invite.controller';
+import { InviteService } from './invite/invite.service';
+import { InviteModule } from './invite/invite.module';
 
 const envFilePath = [`.env.${process.env.NODE_ENV || 'development'}`, '.env'];
 
@@ -48,8 +53,10 @@ const envFilePath = [`.env.${process.env.NODE_ENV || 'development'}`, '.env'];
     UsersModule,
     MoralisModule,
     TheGraphModule,
+    SignModule,
+    InviteModule,
   ],
-  controllers: [AppController],
-  providers: [AppService, AuthService, RedisService, MoralisService],
+  controllers: [AppController, InviteController],
+  providers: [AppService, AuthService, RedisService, MoralisService, SignService, InviteService],
 })
 export class AppModule {}
