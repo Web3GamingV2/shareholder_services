@@ -2,7 +2,7 @@
  * @Author: leelongxi leelongxi@foxmail.com
  * @Date: 2025-04-19 11:15:12
  * @LastEditors: leelongxi leelongxi@foxmail.com
- * @LastEditTime: 2025-04-22 15:02:04
+ * @LastEditTime: 2025-04-22 16:22:12
  * @FilePath: /sbng_cake/shareholder_services/src/auth/auth.service.ts
  * @Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查看配置 进行设置: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
  */
@@ -25,12 +25,15 @@ import { createClient } from '@supabase/supabase-js';
 import { TotpVerifyDto } from 'src/common/dtos/totp-verify.dto';
 import { UnenrollTotpDto } from 'src/common/dtos/unenroll-totp.dto';
 import { TotpCodeDto } from 'src/common/dtos/totp-code.dto';
+import { ADMIN_EMAILS_KEY } from 'src/common/constants/redis';
+import { RedisService } from 'src/redis/redis.service';
 
 @Injectable()
 export class AuthService extends BaseController {
   constructor(
     private readonly supabaseService: SupabaseService,
     private readonly configService: ConfigService,
+    private readonly redisService: RedisService,
   ) {
     super();
   }
@@ -101,8 +104,6 @@ export class AuthService extends BaseController {
   ): Promise<BaseResponse<{ userId: string }>> {
     const supabase = this.supabaseService.supabaseAdmin; // Use admin client for user creation
     try {
-      // Check if user already exists (optional but good practice)
-      // Note: Supabase signUp itself might handle this, but explicit check gives clearer error
       const { data: existingUser, error: lookupError } = await supabase
         .from('profiles')
         .select('user_id')
@@ -115,7 +116,13 @@ export class AuthService extends BaseController {
         return this.error('该邮箱已被注册。', HttpStatus.CONFLICT);
       }
 
-      // Create Supabase Auth User
+      // 1. 从 Redis 获取管理员邮箱列表
+      const adminEmails =
+        (await this.redisService.get<string[]>(ADMIN_EMAILS_KEY)) || [];
+
+      // 2. 确定用户角色
+      const isAdmin = adminEmails.includes(dto.email.toLowerCase());
+
       const { data: newUser, error: createUserError } =
         await supabase.auth.admin.createUser({
           email: dto.email,
@@ -137,8 +144,8 @@ export class AuthService extends BaseController {
         .from('profiles')
         .insert({
           user_id: userId,
-          email: dto.email, // Store email in profile if needed
-          // Add other default profile fields here
+          email: dto.email,
+          is_active: isAdmin, // Set based on admin email
         });
 
       if (createProfileError) {

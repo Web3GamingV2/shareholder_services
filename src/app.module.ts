@@ -2,7 +2,7 @@
  * @Author: leelongxi leelongxi@foxmail.com
  * @Date: 2025-04-13 23:58:49
  * @LastEditors: leelongxi leelongxi@foxmail.com
- * @LastEditTime: 2025-04-21 22:37:44
+ * @LastEditTime: 2025-04-22 15:58:37
  * @FilePath: /sbng_cake/shareholder_services/src/app.module.ts
  * @Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查看配置 进行设置: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
  */
@@ -25,6 +25,8 @@ import { SignModule } from './sign/sign.module';
 import { InviteController } from './invite/invite.controller';
 import { InviteService } from './invite/invite.service';
 import { InviteModule } from './invite/invite.module';
+import { UserRolesService } from './user_roles/user_roles.service';
+import { UserRolesModule } from './user_roles/user_roles.module';
 
 const envFilePath = [`.env.${process.env.NODE_ENV || 'development'}`, '.env'];
 
@@ -55,8 +57,17 @@ const envFilePath = [`.env.${process.env.NODE_ENV || 'development'}`, '.env'];
     TheGraphModule,
     SignModule,
     InviteModule,
+    UserRolesModule,
   ],
   controllers: [AppController, InviteController],
-  providers: [AppService, AuthService, RedisService, MoralisService, SignService, InviteService],
+  providers: [
+    AppService,
+    AuthService,
+    RedisService,
+    MoralisService,
+    SignService,
+    InviteService,
+    UserRolesService,
+  ],
 })
 export class AppModule {}
