@@ -59,6 +59,9 @@ importers:
       '@safe-global/protocol-kit':
         specifier: ^6.0.3
         version: 6.0.3(typescript@5.8.3)
+      '@safe-global/safe-core-sdk-types':
+        specifier: ^5.1.0
+        version: 5.1.0(typescript@5.8.3)
       '@safe-global/types-kit':
         specifier: ^2.0.1
         version: 2.0.1(typescript@5.8.3)
@@ -77,6 +80,9 @@ importers:
       cors:
         specifier: ^2.8.5
         version: 2.8.5
+      ethers:
+        specifier: ^6.7.0
+        version: 6.13.5
       joi:
         specifier: ^17.13.3
         version: 17.13.3
@@ -906,6 +912,10 @@ packages:
 
   '@safe-global/protocol-kit@6.0.3':
     resolution: {integrity: sha512-2FLDWgbKSxq1hZAY9qj7hqyPQLxPq7sWn9+uuJz0tkZZLccvcCvxA/sHagBj+6GAZR4qhrnHIJPahyFRA9cZug==}
+
+  '@safe-global/safe-core-sdk-types@5.1.0':
+    resolution: {integrity: sha512-UzXR4zWmVzux25FcIm4H049QhZZpVpIBL5HE+V0p5gHpArZROL+t24fZmsKUf403CtBxIJM5zZSVQL0nFJi+IQ==}
+    deprecated: 'WARNING: This project has been renamed to @safe-global/types-kit. Please, migrate from @safe-global/safe-core-sdk-types@5.1.0 to @safe-global/types-kit@1.0.0.'
 
   '@safe-global/safe-deployments@1.37.32':
     resolution: {integrity: sha512-3XRy6TnVz0uymPxMNo7WkaK88sL12ZpIMKOfrNHkODUZCxCO4GFA0FFfjByAPS1LAXfmV7Mulk9Zx1n9vqR8Cg==}
@@ -4559,7 +4569,6 @@ snapshots:
   '@noble/curves@1.8.2':
     dependencies:
       '@noble/hashes': 1.7.2
-    optional: true
 
   '@noble/hashes@1.3.2': {}
 
@@ -4779,6 +4788,13 @@ snapshots:
       - utf-8-validate
       - zod
 
+  '@safe-global/safe-core-sdk-types@5.1.0(typescript@5.8.3)':
+    dependencies:
+      abitype: 1.0.8(typescript@5.8.3)
+    transitivePeerDependencies:
+      - typescript
+      - zod
+
   '@safe-global/safe-deployments@1.37.32':
     dependencies:
       semver: 7.7.1
@@ -4804,7 +4820,7 @@ snapshots:
 
   '@scure/bip32@1.6.2':
     dependencies:
-      '@noble/curves': 1.8.1
+      '@noble/curves': 1.8.2
       '@noble/hashes': 1.7.2
       '@scure/base': 1.2.4
 
@@ -7182,7 +7198,7 @@ snapshots:
   ox@0.6.9(typescript@5.8.3):
     dependencies:
       '@adraffy/ens-normalize': 1.10.1
-      '@noble/curves': 1.8.1
+      '@noble/curves': 1.8.2
       '@noble/hashes': 1.7.2
       '@scure/bip32': 1.6.2
       '@scure/bip39': 1.5.4

@@ -27,6 +27,7 @@ import { InviteService } from './invite/invite.service';
 import { InviteModule } from './invite/invite.module';
 import { UserRolesService } from './user_roles/user_roles.service';
 import { UserRolesModule } from './user_roles/user_roles.module';
+import { SafeWalltesModule } from './safe_walltes/safe_walltes.module';
 
 const envFilePath = [`.env.${process.env.NODE_ENV || 'development'}`, '.env'];
 
@@ -58,6 +59,7 @@ const envFilePath = [`.env.${process.env.NODE_ENV || 'development'}`, '.env'];
     SignModule,
     InviteModule,
     UserRolesModule,
+    SafeWalltesModule,
   ],
   controllers: [AppController, InviteController],
   providers: [
