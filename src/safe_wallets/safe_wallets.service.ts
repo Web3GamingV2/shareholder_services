@@ -2,7 +2,7 @@
  * @Author: leelongxi leelongxi@foxmail.com
  * @Date: 2025-04-23 14:05:37
  * @LastEditors: leelongxi leelongxi@foxmail.com
- * @LastEditTime: 2025-04-24 11:42:53
+ * @LastEditTime: 2025-04-24 21:49:14
  * @FilePath: /sbng_cake/shareholder_services/src/safe_walltes/safe_walltes.service.ts
  * @Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查看配置 进行设置: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
  */
@@ -19,7 +19,7 @@ import {
   MetaTransactionData,
   OperationType,
 } from '@safe-global/safe-core-sdk-types'; // 导入交易数据类型
-import { encodeFunctionData, parseAbi, Hex } from 'viem'; // 导入 viem 工具用于编码
+import { Interface } from 'ethers';
 import {
   RPC_URL,
   SAFE_ADDRESS,
@@ -27,6 +27,7 @@ import {
   sepoliaNetworkConfig,
   PAT_PROXY_ADDRESS,
 } from 'src/common/constants/safeWallet';
+import { Hex } from 'src/common/interfaces';
 
 @Injectable()
 export class SafeWalletssService implements OnModuleInit {
@@ -151,15 +152,14 @@ export class SafeWalletssService implements OnModuleInit {
   async createTransaction() {
     this.ensureProtocolInitialized();
     try {
-      const patAbi = parseAbi([
+      const patAbi = [
         'function setMultiSigWallet(address _multiSigWallet) external',
-      ]);
+      ];
+      const iface = new Interface(patAbi);
       // 2. 使用 viem 编码函数调用数据
-      const encodedCallData = encodeFunctionData({
-        abi: patAbi,
-        functionName: 'setMultiSigWallet',
-        args: [SAFE_ADDRESS as Hex],
-      });
+      const encodedCallData = iface.encodeFunctionData('setMultiSigWallet', [
+        SAFE_ADDRESS as Hex,
+      ]);
       // 3. 构建 Safe 交易数据
       const safeTransactionData: MetaTransactionData = {
         to: PAT_PROXY_ADDRESS as Hex,

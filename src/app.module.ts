@@ -2,7 +2,7 @@
  * @Author: leelongxi leelongxi@foxmail.com
  * @Date: 2025-04-13 23:58:49
  * @LastEditors: leelongxi leelongxi@foxmail.com
- * @LastEditTime: 2025-04-24 06:42:34
+ * @LastEditTime: 2025-04-24 21:09:45
  * @FilePath: /sbng_cake/shareholder_services/src/app.module.ts
  * @Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查看配置 进行设置: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
  */
@@ -19,15 +19,16 @@ import { RedisModule } from './redis/redis.module';
 import { UsersModule } from './users/users.module';
 import { MoralisService } from './moralis/moralis.service';
 import { MoralisModule } from './moralis/moralis.module';
-import { TheGraphModule } from './the-graph/the-graph.module';
+import { TheGraphModule } from './the_graph/the-graph.module';
 import { SignService } from './sign/sign.service';
 import { SignModule } from './sign/sign.module';
 import { InviteController } from './invite/invite.controller';
 import { InviteService } from './invite/invite.service';
 import { InviteModule } from './invite/invite.module';
-import { UserRolesService } from './user-roles/user_roles.service';
-import { UserRolesModule } from './user-roles/user_roles.module';
+import { UserRolesService } from './user_roles/user_roles.service';
+import { UserRolesModule } from './user_roles/user_roles.module';
 import { SafeWalletsModule } from './safe_wallets/safe_wallets.module';
+import { PolygonBridgeModule } from './polygon_bridge/polygon_bridge.module';
 
 const envFilePath = [`.env.${process.env.NODE_ENV || 'development'}`, '.env'];
 
@@ -60,6 +61,7 @@ const envFilePath = [`.env.${process.env.NODE_ENV || 'development'}`, '.env'];
     InviteModule,
     UserRolesModule,
     SafeWalletsModule,
+    PolygonBridgeModule,
   ],
   controllers: [AppController, InviteController],
   providers: [
