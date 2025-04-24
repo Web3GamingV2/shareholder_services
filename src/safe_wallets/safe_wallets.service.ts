@@ -2,7 +2,7 @@
  * @Author: leelongxi leelongxi@foxmail.com
  * @Date: 2025-04-23 14:05:37
  * @LastEditors: leelongxi leelongxi@foxmail.com
- * @LastEditTime: 2025-04-24 10:11:59
+ * @LastEditTime: 2025-04-24 11:42:53
  * @FilePath: /sbng_cake/shareholder_services/src/safe_walltes/safe_walltes.service.ts
  * @Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查看配置 进行设置: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
  */
@@ -79,7 +79,7 @@ export class SafeWalletssService implements OnModuleInit {
         isSafeDeployed,
       );
       this.isProtocolInitialized = true;
-      await this.createTransaction();
+      // await this.createTransaction();
     } catch (error) {
       this.logger.error('Failed to initialize Safe Protocol Client:', error);
       this.isProtocolInitialized = false;
@@ -198,10 +198,10 @@ export class SafeWalletssService implements OnModuleInit {
       );
 
       // 4. 等待交易确认 (可选)
-      const receipt = transactionResponse.wait();
+      const receipt = await transactionResponse.wait();
       this.logger.log('Transaction executed successfully (1/1):', receipt);
       // 你可以从 receipt 中获取交易哈希等信息
-      console.log('Transaction Hash:', receipt.transactionHash);
+      console.log('Transaction Hash:', receipt);
     } catch (error) {
       console.error('Error initializing Moralis SDK:', error);
     }
