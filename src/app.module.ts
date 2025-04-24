@@ -2,7 +2,7 @@
  * @Author: leelongxi leelongxi@foxmail.com
  * @Date: 2025-04-13 23:58:49
  * @LastEditors: leelongxi leelongxi@foxmail.com
- * @LastEditTime: 2025-04-24 21:09:45
+ * @LastEditTime: 2025-04-24 22:30:03
  * @FilePath: /sbng_cake/shareholder_services/src/app.module.ts
  * @Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查看配置 进行设置: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
  */
@@ -49,6 +49,9 @@ const envFilePath = [`.env.${process.env.NODE_ENV || 'development'}`, '.env'];
         UPSTASH_REDIS_REST_TOKEN: Joi.string().required(),
         MORALIS_API_KEY: Joi.string().required(),
         THE_GRAPH_API_KEY: Joi.string().required(),
+        SEPOILA_ALCHEMY_RPC_URL: Joi.string().required(),
+        AMOY_ALCHEMY_RPC_URL: Joi.string().required(),
+        WEB_PRIVATE_KEY: Joi.string().required(),
       }),
     }),
     SupabaseModule,
