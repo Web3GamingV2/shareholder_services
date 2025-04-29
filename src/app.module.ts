@@ -2,7 +2,7 @@
  * @Author: leelongxi leelongxi@foxmail.com
  * @Date: 2025-04-13 23:58:49
  * @LastEditors: leelongxi leelongxi@foxmail.com
- * @LastEditTime: 2025-04-27 21:51:29
+ * @LastEditTime: 2025-04-29 20:27:54
  * @FilePath: /sbng_cake/shareholder_services/src/app.module.ts
  * @Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查看配置 进行设置: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
  */
@@ -28,6 +28,8 @@ import { InviteModule } from './invite/invite.module';
 import { UserRolesService } from './user_roles/user_roles.service';
 import { UserRolesModule } from './user_roles/user_roles.module';
 import { SafeWalletsModule } from './safe_wallets/safe_wallets.module';
+import { CacheService } from './cache/cache.service';
+import { CacheModule } from './cache/cache.module';
 
 const envFilePath = [`.env.${process.env.NODE_ENV || 'development'}`, '.env'];
 
@@ -63,6 +65,7 @@ const envFilePath = [`.env.${process.env.NODE_ENV || 'development'}`, '.env'];
     InviteModule,
     UserRolesModule,
     SafeWalletsModule,
+    CacheModule,
   ],
   controllers: [AppController, InviteController],
   providers: [
@@ -73,6 +76,7 @@ const envFilePath = [`.env.${process.env.NODE_ENV || 'development'}`, '.env'];
     SignService,
     InviteService,
     UserRolesService,
+    CacheService,
   ],
 })
 export class AppModule {}

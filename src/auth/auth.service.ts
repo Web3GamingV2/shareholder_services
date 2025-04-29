@@ -2,7 +2,7 @@
  * @Author: leelongxi leelongxi@foxmail.com
  * @Date: 2025-04-19 11:15:12
  * @LastEditors: leelongxi leelongxi@foxmail.com
- * @LastEditTime: 2025-04-29 18:15:18
+ * @LastEditTime: 2025-04-29 19:33:11
  * @FilePath: /sbng_cake/shareholder_services/src/auth/auth.service.ts
  * @Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查看配置 进行设置: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
  */
@@ -21,12 +21,13 @@ import { BaseController, BaseResponse } from 'src/common/base';
 import { EmailPasswordDto } from 'src/common/dtos/email-password.dto';
 import { PGRST116 } from 'src/common/constants/code';
 import { EnrollTotpDto } from 'src/common/dtos/enroll-totp.dto';
-import { createClient, User } from '@supabase/supabase-js';
+import { createClient, Factor, User } from '@supabase/supabase-js';
 import { TotpVerifyDto } from 'src/common/dtos/totp-verify.dto';
 import { UnenrollTotpDto } from 'src/common/dtos/unenroll-totp.dto';
 import { TotpCodeDto } from 'src/common/dtos/totp-code.dto';
 import { ADMIN_EMAILS_KEY } from 'src/common/constants/redis';
 import { RedisService } from 'src/redis/redis.service';
+import { AuthInterface } from './auth.interface';
 
 @Injectable()
 export class AuthService extends BaseController {
@@ -38,15 +39,28 @@ export class AuthService extends BaseController {
     super();
   }
 
-  async login(dto: EmailPasswordDto): Promise<
-    BaseResponse<{
-      accessToken: string;
-      refreshToken?: string;
-      needsMfa?: boolean;
-      userId?: string;
-    }>
-  > {
-    const supabase = this.supabaseService.supabaseAdmin; // Use standard client for login
+  async listFactorsTotp(): Promise<Factor[]> {
+    const supabase = this.supabaseService.supabaseAdmin;
+    try {
+      const { data, error } = await supabase.auth.mfa.listFactors();
+      if (error) {
+        throw new InternalServerErrorException('无法获取 MFA 信息。');
+      }
+      const totpFactor = data.totp;
+      if (!totpFactor) {
+        throw new NotFoundException('未找到 TOTP 因素。');
+      }
+      return totpFactor;
+    } catch (error) {
+      if (error instanceof InternalServerErrorException) {
+        throw error;
+      }
+      throw new InternalServerErrorException('获取 MFA 信息时发生内部错误。');
+    }
+  }
+
+  async login(dto: EmailPasswordDto): Promise<AuthInterface> {
+    const supabase = this.supabaseService.supabaseAdmin;
     try {
       const { data, error } = await supabase.auth.signInWithPassword({
         email: dto.email,
@@ -60,39 +74,83 @@ export class AuthService extends BaseController {
             .toLowerCase()
             .includes('multi factor authentication required')
         ) {
-          return this.success(
-            { accessToken: null, needsMfa: true },
-            '需要多因素认证 (MFA)。',
+          // 获取用户的 MFA 因素
+          const { data: userData } = await supabase.auth.admin.getUserById(
+            error.message.split(':')[1]?.trim() || '',
           );
+
+          if (!userData || !userData.user) {
+            throw new UnauthorizedException('无法获取用户信息。');
+          }
+
+          // 获取用户的 MFA 因素
+          const { data: factorsData, error: factorsError } =
+            await supabase.auth.mfa.listFactors();
+          if (factorsError) {
+            throw new InternalServerErrorException('无法获取 MFA 信息。');
+          }
+
+          const totpFactor = factorsData?.totp?.[0];
+
+          if (!totpFactor || totpFactor.status !== 'verified') {
+            throw new UnauthorizedException('MFA 未正确设置。');
+          }
+
+          return {
+            accessToken: null,
+            needsMfa: true,
+            userId: userData.user.id,
+            factorId: totpFactor.id,
+          };
         }
 
-        return this.error(
+        throw new UnauthorizedException(
           '登录失败。请检查您的凭据并确保您的账户已激活。',
-          HttpStatus.UNAUTHORIZED,
         );
       }
 
       if (!data.session || !data.user) {
-        return this.error('登录失败，无法获取会话。', HttpStatus.UNAUTHORIZED);
+        throw new UnauthorizedException('登录失败，无法获取会话。');
       }
 
-      return this.success(
-        {
-          accessToken: data.session.access_token,
-          refreshToken: data.session.refresh_token,
-          userId: data.user.id,
-          needsMfa: false,
-        },
-        '登录成功。',
-      );
-    } catch (error) {
-      if (error instanceof UnauthorizedException) {
-        return this.error(error.message, HttpStatus.UNAUTHORIZED);
+      // 检查用户是否开启了 MFA
+      const { data: factorsData, error: factorsError } =
+        await supabase.auth.mfa.listFactors();
+      if (factorsError) {
+        throw new InternalServerErrorException('无法获取 MFA 信息。');
       }
-      return this.error(
-        '登录过程中发生内部错误。',
-        HttpStatus.INTERNAL_SERVER_ERROR,
-      );
+
+      const hasMfa =
+        factorsData?.totp?.some((factor) => factor.status === 'verified') ||
+        false;
+
+      // 如果用户开启了 MFA，但是没有通过 MFA 验证，则需要进行 MFA 验证
+      if (hasMfa) {
+        const totpFactor = factorsData.totp.find(
+          (factor) => factor.status === 'verified',
+        );
+        return {
+          accessToken: null,
+          needsMfa: true,
+          userId: data.user.id,
+          factorId: totpFactor.id,
+        };
+      }
+
+      return {
+        accessToken: data.session.access_token,
+        refreshToken: data.session.refresh_token,
+        userId: data.user.id,
+        needsMfa: false,
+      };
+    } catch (error) {
+      if (
+        error instanceof UnauthorizedException ||
+        error instanceof InternalServerErrorException
+      ) {
+        throw error;
+      }
+      throw new InternalServerErrorException('登录过程中发生内部错误。');
     }
   }
 
@@ -107,8 +165,6 @@ export class AuthService extends BaseController {
         .select('id')
         .eq('email', dto.email)
         .maybeSingle();
-      console.log('Existing User:', existingUser);
-      console.log('Lookup Error:', lookupError);
       if (lookupError && lookupError.code !== PGRST116) {
         throw new InternalServerErrorException('检查用户时出错。');
       }
@@ -119,8 +175,6 @@ export class AuthService extends BaseController {
       // 1. 从 Redis 获取管理员邮箱列表
       const adminEmails =
         (await this.redisService.get<string[]>(ADMIN_EMAILS_KEY)) || [];
-
-      console.log('Admin Emails:', adminEmails);
 
       // 2. 确定用户角色
       const isAdmin = adminEmails.includes(dto.email.toLowerCase());
