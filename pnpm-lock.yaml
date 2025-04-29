@@ -104,6 +104,9 @@ importers:
       joi:
         specifier: ^17.13.3
         version: 17.13.3
+      jsonwebtoken:
+        specifier: ^9.0.2
+        version: 9.0.2
       maticjs‑ethers:
         specifier: link:@maticnetwork/maticjs‑ethers
         version: link:@maticnetwork/maticjs‑ethers

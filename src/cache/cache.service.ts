@@ -2,7 +2,7 @@
  * @Author: leelongxi leelongxi@foxmail.com
  * @Date: 2025-04-29 20:04:21
  * @LastEditors: leelongxi leelongxi@foxmail.com
- * @LastEditTime: 2025-04-29 20:27:32
+ * @LastEditTime: 2025-04-29 22:26:34
  * @FilePath: /shareholder_services/src/cache/cache.service.ts
  * @Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查看配置 进行设置: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
  */
@@ -19,7 +19,6 @@ export class CacheService {
 
   // 获取缓存值
   async getCache<T>(key: string): Promise<T | undefined> {
-    // 添加泛型支持并返回 undefined 而不是 any
     return await this.cacheManager.get<T>(key);
   }
 

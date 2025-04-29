@@ -2,10 +2,11 @@
  * @Author: leelongxi leelongxi@foxmail.com
  * @Date: 2025-04-21 22:10:45
  * @LastEditors: leelongxi leelongxi@foxmail.com
- * @LastEditTime: 2025-04-29 20:36:09
+ * @LastEditTime: 2025-04-29 22:26:59
  * @FilePath: /sbng_cake/shareholder_services/src/guards/jwt-auth/jwt-auth.guard.ts
  * @Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查看配置 进行设置: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
  */
+// import * as jwt from 'jsonwebtoken';
 import { Injectable, ExecutionContext } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import { Reflector } from '@nestjs/core';
@@ -29,8 +30,13 @@ export class JwtAuthGuard extends AuthGuard('jwt') {
     if (isPublic) {
       return true;
     }
-    console.log('JwtAuthGuard canActivate');
-    // If not public, proceed with the standard JWT validation provided by AuthGuard('jwt')
-    return super.canActivate(context);
+
+    try {
+      const canActivateResult = super.canActivate(context);
+      return canActivateResult;
+    } catch (error) {
+      // 确保异常被抛出，以便 NestJS 处理
+      throw error;
+    }
   }
 }

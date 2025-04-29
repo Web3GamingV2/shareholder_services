@@ -2,7 +2,7 @@
  * @Author: leelongxi leelongxi@foxmail.com
  * @Date: 2025-04-13 23:58:49
  * @LastEditors: leelongxi leelongxi@foxmail.com
- * @LastEditTime: 2025-04-22 14:08:13
+ * @LastEditTime: 2025-04-29 21:46:58
  * @FilePath: /sbng_cake/shareholder_services/src/main.ts
  * @Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查看配置 进行设置: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
  */
@@ -11,6 +11,7 @@ import { AppModule } from './app.module';
 import { ConfigService } from '@nestjs/config';
 import { JwtAuthGuard } from './common/guards/jwt-auth/jwt-auth.guard';
 import { ValidationPipe } from '@nestjs/common';
+import { AllExceptionsFilter } from './common/filters/all-exception.filter';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
@@ -20,6 +21,7 @@ async function bootstrap() {
   const reflector = app.get(Reflector);
 
   app.useGlobalGuards(new JwtAuthGuard(reflector));
+  app.useGlobalFilters(new AllExceptionsFilter());
 
   app.useGlobalPipes(
     new ValidationPipe({

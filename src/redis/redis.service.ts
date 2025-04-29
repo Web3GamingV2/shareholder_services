@@ -2,7 +2,7 @@
  * @Author: leelongxi leelongxi@foxmail.com
  * @Date: 2025-04-20 14:14:42
  * @LastEditors: leelongxi leelongxi@foxmail.com
- * @LastEditTime: 2025-04-20 17:52:56
+ * @LastEditTime: 2025-04-29 22:36:47
  * @FilePath: /sbng_cake/shareholder_services/src/redis/redis.service.ts
  * @Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查看配置 进行设置: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
  */
@@ -21,7 +21,7 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
   constructor(private configService: ConfigService) {}
 
   onModuleInit() {
-    console.log('RedisService onModuleInit');
+    return;
     const redisUrl = this.configService.get<string>('UPSTASH_REDIS_REST_URL');
     const redisToken = this.configService.get<string>(
       'UPSTASH_REDIS_REST_TOKEN',
