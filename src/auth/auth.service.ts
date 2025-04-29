@@ -2,7 +2,7 @@
  * @Author: leelongxi leelongxi@foxmail.com
  * @Date: 2025-04-19 11:15:12
  * @LastEditors: leelongxi leelongxi@foxmail.com
- * @LastEditTime: 2025-04-22 16:22:12
+ * @LastEditTime: 2025-04-29 18:15:18
  * @FilePath: /sbng_cake/shareholder_services/src/auth/auth.service.ts
  * @Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查看配置 进行设置: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
  */
@@ -21,7 +21,7 @@ import { BaseController, BaseResponse } from 'src/common/base';
 import { EmailPasswordDto } from 'src/common/dtos/email-password.dto';
 import { PGRST116 } from 'src/common/constants/code';
 import { EnrollTotpDto } from 'src/common/dtos/enroll-totp.dto';
-import { createClient } from '@supabase/supabase-js';
+import { createClient, User } from '@supabase/supabase-js';
 import { TotpVerifyDto } from 'src/common/dtos/totp-verify.dto';
 import { UnenrollTotpDto } from 'src/common/dtos/unenroll-totp.dto';
 import { TotpCodeDto } from 'src/common/dtos/totp-code.dto';
@@ -99,75 +99,77 @@ export class AuthService extends BaseController {
   /**
    * 2. Register with Email and Password
    */
-  async register(
-    dto: EmailPasswordDto,
-  ): Promise<BaseResponse<{ userId: string }>> {
+  async register(dto: EmailPasswordDto): Promise<User> {
     const supabase = this.supabaseService.supabaseAdmin; // Use admin client for user creation
     try {
       const { data: existingUser, error: lookupError } = await supabase
         .from('profiles')
-        .select('user_id')
+        .select('id')
         .eq('email', dto.email)
         .maybeSingle();
+      console.log('Existing User:', existingUser);
+      console.log('Lookup Error:', lookupError);
       if (lookupError && lookupError.code !== PGRST116) {
-        return this.error('检查用户时出错。', HttpStatus.INTERNAL_SERVER_ERROR);
+        throw new InternalServerErrorException('检查用户时出错。');
       }
       if (existingUser) {
-        return this.error('该邮箱已被注册。', HttpStatus.CONFLICT);
+        throw new ConflictException('该邮箱已被注册。');
       }
 
       // 1. 从 Redis 获取管理员邮箱列表
       const adminEmails =
         (await this.redisService.get<string[]>(ADMIN_EMAILS_KEY)) || [];
 
+      console.log('Admin Emails:', adminEmails);
+
       // 2. 确定用户角色
       const isAdmin = adminEmails.includes(dto.email.toLowerCase());
 
+      // 这里通过 trigger 会自动生成一条记录
       const { data: newUser, error: createUserError } =
         await supabase.auth.admin.createUser({
           email: dto.email,
           password: dto.password,
-          email_confirm: true, // Auto-confirm for simplicity, or set to false to require email verification
-          // You might want to add user_metadata here if needed immediately
+          email_confirm: true,
         });
 
       if (createUserError) {
         if (createUserError.message.includes('already exists')) {
-          return this.error('该邮箱已被注册。', HttpStatus.CONFLICT);
+          throw new ConflictException('该邮箱已被注册。');
         }
-        return this.error('创建用户时出错。', HttpStatus.INTERNAL_SERVER_ERROR);
+        throw new InternalServerErrorException('创建用户时出错。');
       }
 
       const userId = newUser.user.id;
-      // Create corresponding profile entry (optional, but common)
+
       const { error: createProfileError } = await supabase
         .from('profiles')
-        .insert({
-          user_id: userId,
-          email: dto.email,
-          is_active: isAdmin, // Set based on admin email
-        });
+        .upsert(
+          {
+            id: userId,
+            email: dto.email,
+            is_active: isAdmin, // Set based on admin email
+          },
+          {
+            onConflict: 'id',
+          },
+        );
 
       if (createProfileError) {
         await supabase.auth.admin.deleteUser(userId);
-        return this.error(
-          '创建用户 Profile 时出错。',
-          HttpStatus.INTERNAL_SERVER_ERROR,
-        );
+        throw new InternalServerErrorException('创建用户 Profile 时出错。');
       }
 
-      return this.success({ userId: userId }, '注册成功。'); // Consider if email verification is needed
+      return newUser.user; // 直接返回数据，不使用 this.success
     } catch (error) {
+      // 直接将捕获的异常抛出，让 controller 处理
       if (
         error instanceof ConflictException ||
         error instanceof InternalServerErrorException
       ) {
-        return this.error(error.message, error.getStatus());
+        throw error;
       }
-      return this.error(
-        '注册过程中发生内部错误。',
-        HttpStatus.INTERNAL_SERVER_ERROR,
-      );
+      throw new InternalServerErrorException('注册过程中发生内部错误。');
     }
   }
 
