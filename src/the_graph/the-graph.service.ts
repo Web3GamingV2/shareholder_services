@@ -1,0 +1,97 @@
+/* eslint-disable @typescript-eslint/ban-ts-comment */
+/*
+ * @Author: leelongxi leelongxi@foxmail.com
+ * @Date: 2025-04-21 22:38:14
+ * @LastEditors: leelongxi leelongxi@foxmail.com
+ * @LastEditTime: 2025-04-24 15:28:51
+ * @FilePath: /sbng_cake/shareholder_services/src/the-graph/the-graph.service.ts
+ * @Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查看配置 进行设置: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
+ */
+import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
+import {
+  GraphQlResponse,
+  MultiSigWalletAdressChanged,
+  GraphQLClient,
+  SingleChangeResponse,
+} from './the-graph.interface';
+import { InjectGraphQLClient } from '@golevelup/nestjs-graphql-request';
+import {
+  GET_MULTI_SIG_CHANGES,
+  GET_MULTI_SIG_CHANGES_ID,
+} from 'src/common/queries';
+
+@Injectable()
+export class TheGraphService implements OnModuleInit {
+  private readonly logger = new Logger(TheGraphService.name);
+
+  constructor(@InjectGraphQLClient() private readonly client: GraphQLClient) {}
+
+  onModuleInit() {
+    this.logger.log('TheGraphService initialized.');
+  }
+
+  async getMultiSigChanges(): Promise<MultiSigWalletAdressChanged[]> {
+    try {
+      // <<< 使用 client.request 发送请求，传入 gql 定义的查询 >>>
+      const response = await this.client.request<
+        GraphQlResponse<MultiSigWalletAdressChanged[]>
+      >(GET_MULTI_SIG_CHANGES);
+
+      const resultData = response.multiSigWalletAdressChangeds;
+
+      if (!resultData) {
+        this.logger.warn(
+          'No multiSigWalletAdressChangeds data returned from subgraph.',
+        );
+        return [];
+      }
+
+      this.logger.log(`Successfully fetched ${resultData.length} records.`);
+      return resultData;
+    } catch (error) {
+      this.logger.error(
+        `Error fetching data from subgraph: ${error.message}`,
+        error.stack,
+      );
+      if (error.response && error.response.errors) {
+        this.logger.error(
+          'GraphQL Errors:',
+          JSON.stringify(error.response.errors),
+        );
+      }
+      throw new Error('Failed to fetch data from The Graph subgraph.');
+    }
+  }
+
+  async getMultiSigChangesById(
+    id: string,
+  ): Promise<MultiSigWalletAdressChanged> {
+    try {
+      const queryForId = GET_MULTI_SIG_CHANGES_ID(id);
+      // <<< 使用 client.request 发送请求，传入 gql 定义的查询 >>>
+      const response =
+        await this.client.request<SingleChangeResponse>(queryForId);
+      const resultData = response.multiSigWalletAdressChanged;
+      if (!resultData) {
+        this.logger.warn(
+          'No multiSigWalletAdressChanged data returned from subgraph.',
+        );
+        return null;
+      }
+      this.logger.log(`Successfully fetched record for id: ${id}.`);
+      return resultData;
+    } catch (error) {
+      this.logger.error(
+        `Error fetching data from subgraph: ${error.message}`,
+        error.stack,
+      );
+      if (error.response && error.response.errors) {
+        this.logger.error(
+          'GraphQL Errors:',
+          JSON.stringify(error.response.errors),
+        );
+      }
+      throw new Error('Failed to fetch data from The Graph subgraph.');
+    }
+  }
+}
