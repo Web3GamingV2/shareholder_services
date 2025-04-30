@@ -31,6 +31,7 @@ import { SafeWalletsModule } from './safe_wallets/safe_wallets.module';
 import { CacheService } from './cache/cache.service';
 import { CacheModule } from './cache/cache.module';
 import { JwtAuthStrategy } from './common/guards/jwt-auth/jwt.strategy';
+import { MemoryCacheModule } from './memory-cache/memory-cache.module';
 
 const envFilePath = [`.env.${process.env.NODE_ENV || 'development'}`, '.env'];
 
@@ -67,6 +68,7 @@ const envFilePath = [`.env.${process.env.NODE_ENV || 'development'}`, '.env'];
     UserRolesModule,
     SafeWalletsModule,
     CacheModule,
+    MemoryCacheModule,
   ],
   controllers: [AppController, InviteController],
   providers: [

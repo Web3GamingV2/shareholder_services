@@ -2,7 +2,7 @@
  * @Author: leelongxi leelongxi@foxmail.com
  * @Date: 2025-04-19 11:15:12
  * @LastEditors: leelongxi leelongxi@foxmail.com
- * @LastEditTime: 2025-04-29 22:02:30
+ * @LastEditTime: 2025-04-30 11:40:56
  * @FilePath: /sbng_cake/shareholder_services/src/auth/auth.service.ts
  * @Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查看配置 进行设置: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
  */
@@ -39,10 +39,14 @@ export class AuthService extends BaseController {
     super();
   }
 
-  async listFactorsTotp(): Promise<Factor[]> {
-    const supabase = this.supabaseService.supabaseAdmin;
+  async listFactorsTotp(supabaseClientId: string): Promise<Factor[]> {
+    const userClient =
+      await this.supabaseService.getSupabaseClient(supabaseClientId);
+    if (!userClient) {
+      throw new InternalServerErrorException('无法获取用户客户端。');
+    }
     try {
-      const { data, error } = await supabase.auth.mfa.listFactors();
+      const { data, error } = await userClient.auth.mfa.listFactors();
       if (error) {
         throw new InternalServerErrorException('无法获取 MFA 信息。');
       }
@@ -62,65 +66,38 @@ export class AuthService extends BaseController {
   async login(dto: EmailPasswordDto): Promise<AuthInterface> {
     const supabase = this.supabaseService.supabaseAdmin;
     try {
+      // 尝试使用密码登录
       const { data, error } = await supabase.auth.signInWithPassword({
         email: dto.email,
         password: dto.password,
       });
 
       if (error) {
-        if (
-          error.message.toLowerCase().includes('mfa') ||
-          error.message
-            .toLowerCase()
-            .includes('multi factor authentication required')
-        ) {
-          // 获取用户的 MFA 因素
-          const { data: userData } = await supabase.auth.admin.getUserById(
-            error.message.split(':')[1]?.trim() || '',
-          );
-
-          if (!userData || !userData.user) {
-            throw new UnauthorizedException('无法获取用户信息。');
-          }
-
-          // 获取用户的 MFA 因素
-          // TODO 需要先根据 jwt 生成对应的 user client
-          const { data: factorsData, error: factorsError } =
-            await supabase.auth.mfa.listFactors();
-          if (factorsError) {
-            throw new InternalServerErrorException('无法获取 MFA 信息。');
-          }
-
-          const totpFactor = factorsData?.totp?.[0];
-
-          if (!totpFactor || totpFactor.status !== 'verified') {
-            throw new UnauthorizedException('MFA 未正确设置。');
-          }
-
-          return {
-            accessToken: null,
-            needsMfa: true,
-            userId: userData.user.id,
-            factorId: totpFactor.id,
-          };
-        }
-
-        throw new UnauthorizedException(
-          '登录失败。请检查您的凭据并确保您的账户已激活。',
-        );
+        throw new UnauthorizedException('登录失败，无效的凭据。');
       }
 
       if (!data.session || !data.user) {
         throw new UnauthorizedException('登录失败，无法获取会话。');
       }
+      const supabaseClientId = `${data?.user.id}:${data?.session?.refresh_token}`;
+
+      const userClient = await this.supabaseService.createSupabaseClient(
+        supabaseClientId,
+        data?.session?.expires_in,
+        data?.session?.access_token,
+        data?.session?.refresh_token,
+      );
+
+      if (!userClient) {
+        throw new InternalServerErrorException('无法创建用户客户端。');
+      }
 
       // 检查用户是否开启了 MFA
       const { data: factorsData, error: factorsError } =
-        await supabase.auth.mfa.listFactors();
+        await userClient.auth.mfa.listFactors();
       if (factorsError) {
         throw new InternalServerErrorException('无法获取 MFA 信息。');
       }
-
       const hasMfa =
         factorsData?.totp?.some((factor) => factor.status === 'verified') ||
         false;

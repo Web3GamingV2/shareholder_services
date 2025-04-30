@@ -2,7 +2,7 @@
  * @Author: leelongxi leelongxi@foxmail.com
  * @Date: 2025-04-19 11:15:21
  * @LastEditors: leelongxi leelongxi@foxmail.com
- * @LastEditTime: 2025-04-29 19:35:20
+ * @LastEditTime: 2025-04-30 11:39:33
  * @FilePath: /sbng_cake/shareholder_services/src/auth/auth.controller.ts
  * @Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查看配置 进行设置: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
  */
@@ -12,7 +12,9 @@ import {
   Get,
   HttpCode,
   HttpStatus,
+  PlainLiteralObject,
   Post,
+  Req,
   ValidationPipe,
 } from '@nestjs/common';
 import { AuthService } from './auth.service';
@@ -30,9 +32,13 @@ export class AuthController extends BaseController {
 
   @Get('list-factors-totp')
   @HttpCode(HttpStatus.OK)
-  async listFactorsTotp(): Promise<BaseResponse<Factor[]>> {
+  async listFactorsTotp(
+    @Req() req: PlainLiteralObject,
+  ): Promise<BaseResponse<Factor[]>> {
     try {
-      const factors = await this.authService.listFactorsTotp();
+      const factors = await this.authService.listFactorsTotp(
+        req.user?.supabaseClientId,
+      );
       return this.success(factors);
     } catch (error) {
       console.log(error);

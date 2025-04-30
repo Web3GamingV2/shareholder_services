@@ -2,7 +2,7 @@
  * @Author: leelongxi leelongxi@foxmail.com
  * @Date: 2025-04-29 21:38:29
  * @LastEditors: leelongxi leelongxi@foxmail.com
- * @LastEditTime: 2025-04-29 22:53:56
+ * @LastEditTime: 2025-04-30 12:07:46
  * @FilePath: /shareholder_services/src/common/guards/jwt-auth/jwt.strategy.ts
  * @Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查看配置 进行设置: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
  */
@@ -25,19 +25,33 @@ export class JwtAuthStrategy extends PassportStrategy(JwtStrategy) {
 
   // 此方法返回用户信息，在请求的生命周期中可以通过请求对象访问到这些信息
   async validate(req: Request, payload: PlainLiteralObject) {
-    const cacheKey = `${payload.sub}:${payload.session_id}`;
-    const supabaseClient = await this.supabase.getSupabaseClient(cacheKey);
-    if (!supabaseClient) {
-      const access_token = req.headers.authorization.split(' ')[1];
-      const refresh_token = req.headers['x-refresh-token'] as string;
-      const ttl = payload.exp - payload.iat;
-      await this.supabase.createSupabaseClient(
-        cacheKey,
+    const ttl = payload.exp - payload.iat;
+    const access_token = req.headers.authorization.split(' ')[1];
+    const refresh_token = req.headers['x-refresh-token'] as string;
+    const supabaseClientId = `${payload.sub}:${refresh_token}`;
+    const supabaseClient = await this.supabase.getSupabaseClient(
+      supabaseClientId,
+      ttl,
+      access_token,
+      refresh_token,
+    );
+    if (!supabaseClient && access_token) {
+      const newSupClient = await this.supabase.createSupabaseClient(
+        supabaseClientId,
         ttl,
         access_token,
         refresh_token,
       );
+      if (!newSupClient) {
+        throw new Error('Unauthorized');
+      }
+      // console.log('newSupClient', newSupClient);
     }
-    return { userId: payload.sub, session_id: payload.session_id }; // 返回用户信息
+    return {
+      userId: payload.sub,
+      sessionId: payload.session_id,
+      supabaseClientId: supabaseClientId,
+      refresh_token: refresh_token,
+    }; // 返回用户信息
   }
 }

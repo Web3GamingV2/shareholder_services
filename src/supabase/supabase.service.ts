@@ -2,14 +2,14 @@
  * @Author: leelongxi leelongxi@foxmail.com
  * @Date: 2025-04-19 11:14:22
  * @LastEditors: leelongxi leelongxi@foxmail.com
- * @LastEditTime: 2025-04-29 23:11:27
+ * @LastEditTime: 2025-04-30 12:01:07
  * @FilePath: /sbng_cake/shareholder_services/src/supabase/supabase.service.ts
  * @Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查看配置 进行设置: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
  */
 import { Inject, Injectable, OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
-import { CacheService } from 'src/cache/cache.service';
+import { MemoryCacheService } from 'src/memory-cache/memory-cache.service';
 
 @Injectable()
 export class SupabaseService implements OnModuleInit {
@@ -20,9 +20,14 @@ export class SupabaseService implements OnModuleInit {
     return this._supabaseAdmin;
   }
 
+  private createSupabaseClientId(id: string) {
+    const cid = `supabase:client:${id}`;
+    return cid;
+  }
+
   constructor(
     @Inject(ConfigService) private readonly config: ConfigService,
-    private readonly cache: CacheService,
+    private readonly memoryCache: MemoryCacheService,
   ) {}
 
   onModuleInit() {
@@ -35,6 +40,10 @@ export class SupabaseService implements OnModuleInit {
     if (this._supabaseAdmin) {
       return this._supabaseAdmin;
     }
+    return this._createSupabaseAdminClient();
+  }
+
+  private async _createSupabaseAdminClient() {
     const supabaseUrl = this.config.get<string>('SUPABASE_URL');
     const supabaseServiceKey = this.config.get<string>('SUPABASE_KEY');
     if (!supabaseUrl || !supabaseServiceKey) {
@@ -67,24 +76,41 @@ export class SupabaseService implements OnModuleInit {
     ttl: number,
     access_token: string,
     refresh_token?: string,
+    admin = false,
   ) {
-    const cacheKey = `supabase:client:${id}`;
-    const cachedClient = await this.cache.getCache<SupabaseClient>(cacheKey);
+    const cacheKey = this.createSupabaseClientId(id);
+    const cachedClient = await this.memoryCache.get<SupabaseClient>(cacheKey);
     if (cachedClient) {
       return cachedClient;
     }
-    const client = await this._createSupabaseClient();
-    await client.auth.setSession({
-      access_token: access_token,
-      refresh_token: refresh_token,
-    });
-    await this.cache.setCache(cacheKey, client, ttl); // 缓存有效期为 7 天
+    // 若并发请求正在初始化同一个 id，则等待已有 promise 返回
+    if (this._initializingClients.has(cacheKey)) {
+      return this._initializingClients.get(cacheKey)!;
+    }
+    const initializingPromise = (async () => {
+      try {
+        const client = admin
+          ? await this._createSupabaseAdminClient()
+          : await this._createSupabaseClient();
+        await client.auth.setSession({
+          access_token: access_token,
+          refresh_token: refresh_token,
+        });
+        await this.memoryCache.set(cacheKey, client, ttl);
+        return client;
+      } finally {
+        this._initializingClients.delete(cacheKey);
+      }
+    })();
+    this._initializingClients.set(cacheKey, initializingPromise);
+    const client = await initializingPromise;
+    this._initializingClients.delete(cacheKey);
     return client;
   }
 
   public async clearSupabaseClientCache(id: string) {
-    const cacheKey = `supabase:client:${id}`;
-    await this.cache.deleteCache(cacheKey);
+    const cacheKey = this.createSupabaseClientId(id);
+    await this.memoryCache.delete(cacheKey);
   }
 
   public async getSupabaseClient(
@@ -93,30 +119,27 @@ export class SupabaseService implements OnModuleInit {
     access_token?: string,
     refresh_token?: string,
   ) {
-    const cacheKey = `supabase:client:${id}`;
-    const cachedClient = await this.cache.getCache(cacheKey);
-    if (cachedClient) {
-      return cachedClient;
+    const cacheKey = this.createSupabaseClientId(id);
+    const cachedClient = await this.memoryCache.get<SupabaseClient>(cacheKey);
+    if (!cachedClient) {
+      return null;
     }
-    // 若并发请求正在初始化同一个 id，则等待已有 promise 返回
-    if (this._initializingClients.has(id)) {
-      return this._initializingClients.get(id)!;
+    const session = await cachedClient.auth.getSession();
+    const exp = session.data?.session?.expires_at;
+    const now = Math.floor(Date.now() / 1000);
+    if (exp && exp - now < 300 && access_token && refresh_token) {
+      try {
+        const { error } = await cachedClient.auth.refreshSession();
+        if (error) {
+          await this.clearSupabaseClientCache(id);
+          return null;
+        }
+        await this.memoryCache.set(cacheKey, cachedClient, ttl);
+      } catch (error) {
+        await this.clearSupabaseClientCache(id);
+        return null;
+      }
     }
-
-    if (!access_token) return null;
-
-    const initializingPromise = (async () => {
-      const client = await this.createSupabaseClient(
-        id,
-        ttl,
-        access_token,
-        refresh_token,
-      );
-      this._initializingClients.delete(id);
-      return client;
-    })();
-
-    this._initializingClients.set(id, initializingPromise);
-    return initializingPromise;
+    return cachedClient;
   }
 }
