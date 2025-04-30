@@ -2,7 +2,7 @@
  * @Author: leelongxi leelongxi@foxmail.com
  * @Date: 2025-04-23 14:05:37
  * @LastEditors: leelongxi leelongxi@foxmail.com
- * @LastEditTime: 2025-04-24 21:49:14
+ * @LastEditTime: 2025-04-30 21:14:50
  * @FilePath: /sbng_cake/shareholder_services/src/safe_walltes/safe_walltes.service.ts
  * @Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查看配置 进行设置: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
  */
@@ -10,7 +10,7 @@ import {
   Injectable,
   Logger,
   OnModuleInit,
-  PlainLiteralObject,
+  // PlainLiteralObject,
 } from '@nestjs/common';
 import SafeApiKit from '@safe-global/api-kit';
 import Safe from '@safe-global/protocol-kit';
@@ -19,7 +19,6 @@ import {
   MetaTransactionData,
   OperationType,
 } from '@safe-global/safe-core-sdk-types'; // 导入交易数据类型
-import { Interface } from 'ethers';
 import {
   RPC_URL,
   SAFE_ADDRESS,
@@ -149,17 +148,10 @@ export class SafeWalletssService implements OnModuleInit {
     }
   }
 
-  async createTransaction() {
+  // 创建一个多签交易
+  async createTransaction(encodedCallData: string): Promise<string> {
     this.ensureProtocolInitialized();
     try {
-      const patAbi = [
-        'function setMultiSigWallet(address _multiSigWallet) external',
-      ];
-      const iface = new Interface(patAbi);
-      // 2. 使用 viem 编码函数调用数据
-      const encodedCallData = iface.encodeFunctionData('setMultiSigWallet', [
-        SAFE_ADDRESS as Hex,
-      ]);
       // 3. 构建 Safe 交易数据
       const safeTransactionData: MetaTransactionData = {
         to: PAT_PROXY_ADDRESS as Hex,
@@ -184,26 +176,28 @@ export class SafeWalletssService implements OnModuleInit {
 
       // 3. 直接执行交易
       // executeTransaction 会自动处理签名（如果需要）并将交易发送到区块链
-      const executeTxResponse =
-        await this.protocolKit.executeTransaction(safeTransaction);
-      this.logger.log('Executing 1/1 transaction...');
+      // const executeTxResponse =
+      //   await this.protocolKit.executeTransaction(safeTransaction);
+      // this.logger.log('Executing 1/1 transaction...');
 
-      const transactionResponse =
-        (await executeTxResponse.transactionResponse) as {
-          wait: () => PlainLiteralObject;
-        };
-      this.logger.log(
-        'Transaction executed successfully (1/1):',
-        transactionResponse,
-      );
+      // const transactionResponse =
+      //   (await executeTxResponse.transactionResponse) as {
+      //     wait: () => PlainLiteralObject;
+      //   };
+      // this.logger.log(
+      //   'Transaction executed successfully (1/1):',
+      //   transactionResponse,
+      // );
 
-      // 4. 等待交易确认 (可选)
-      const receipt = await transactionResponse.wait();
-      this.logger.log('Transaction executed successfully (1/1):', receipt);
-      // 你可以从 receipt 中获取交易哈希等信息
-      console.log('Transaction Hash:', receipt);
+      // // 4. 等待交易确认 (可选)
+      // const receipt = await transactionResponse.wait();
+      // this.logger.log('Transaction executed successfully (1/1):', receipt);
+      // // 你可以从 receipt 中获取交易哈希等信息
+      // console.log('Transaction Hash:', receipt);
+      return safeTxHash;
     } catch (error) {
       console.error('Error initializing Moralis SDK:', error);
+      throw error;
     }
   }
 
@@ -213,17 +207,22 @@ export class SafeWalletssService implements OnModuleInit {
    * @returns Promise<string> 返回 Safe Transaction Hash
    */
   async proposeTransaction(
-    safeTransactionData: MetaTransactionData,
+    encodedCallData: string,
     senderAddress: string,
   ): Promise<string> {
     this.ensureProtocolInitialized();
     this.ensureInitialized(); // 确保 safeClient 也初始化
 
     try {
+      const safeTransactionData: MetaTransactionData = {
+        to: PAT_PROXY_ADDRESS as Hex,
+        value: '0', // 1 wei
+        data: encodedCallData,
+        operation: OperationType.Call,
+      };
       // 1. 创建 Safe 交易对象
       const safeTransaction = await this.protocolKit.createTransaction({
         transactions: [safeTransactionData],
-        // options: { nonce: await this.protocolKit.getNonce() } // 可选：显式指定 nonce
       });
 
       // 2. 获取交易哈希
