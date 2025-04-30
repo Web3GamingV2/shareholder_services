@@ -2,13 +2,15 @@
  * @Author: leelongxi leelongxi@foxmail.com
  * @Date: 2025-04-23 14:05:46
  * @LastEditors: leelongxi leelongxi@foxmail.com
- * @LastEditTime: 2025-04-30 21:17:22
+ * @LastEditTime: 2025-04-30 21:33:45
  * @FilePath: /sbng_cake/shareholder_services/src/safe_wallets/safe_wallets.controller.ts
  * @Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查看配置 进行设置: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
  */
 import {
   Body,
   Controller,
+  Get,
+  Param,
   PlainLiteralObject,
   Post,
   ValidationPipe,
@@ -20,6 +22,7 @@ import { Public } from 'src/common/decorators/public.decorator';
 import { SAFE_ADDRESS } from 'src/common/constants/safeWallet';
 import { Hex } from 'src/common/interfaces';
 import { TransactionDto } from 'src/common/dtos/transaction.dto';
+import { SafeMultisigTransactionListResponse } from '@safe-global/api-kit';
 
 @Controller('safe-wallets')
 export class SafeWalletsController extends BaseController {
@@ -27,19 +30,6 @@ export class SafeWalletsController extends BaseController {
     super();
   }
 
-  // 新增：调用 createTransaction 的端点
-  /**
-   * {
-	"data": {
-		"message": "Transaction creation initiated successfully.",
-		"safeTxHash": "0x118ba728e325671286b15219139f8aa7930c087d5066849746c252b2799079f0"
-	},
-	"message": "success",
-	"errno": 0
-}
-   * @param transactionDto 
-   * @returns 
-   */
   @Post('create-transaction') // 定义 POST 端点路由
   @Public() // 如果此端点需要公开访问
   async createTransaction(
@@ -77,6 +67,44 @@ export class SafeWalletsController extends BaseController {
       );
       // 返回错误的响应
       return this.error(`Failed to create transaction: ${error.message}`);
+    }
+  }
+
+  @Get('get-transaction-confirmations')
+  @Public()
+  async getTransactionConfirmations(): Promise<
+    BaseResponse<SafeMultisigTransactionListResponse>
+  > {
+    try {
+      const transactionConfirmations =
+        await this.safeWalletssService.getTransactionConfirmations();
+      return this.success(transactionConfirmations);
+    } catch (error) {
+      console.error(
+        `Failed to get transaction confirmations: ${error.message}`,
+        error.stack,
+      );
+      return this.error(
+        `Failed to get transaction confirmations: ${error.message}`,
+      );
+    }
+  }
+
+  @Get('unsigned-signers/:safeTxHash') // 定义 GET 端点路由，包含 safeTxHash 参数
+  @Public() // 根据需要决定是否公开
+  async getUnsignedSigners(
+    @Param('safeTxHash') safeTxHash: string, // 使用 @Param 获取路径参数
+  ): Promise<BaseResponse<string[]>> {
+    try {
+      const unsignedSigners =
+        await this.safeWalletssService.getUnsignedSigners(safeTxHash);
+      return this.success(unsignedSigners);
+    } catch (error) {
+      console.error(
+        `Failed to get unsigned signers for tx ${safeTxHash}: ${error.message}`,
+        error.stack,
+      );
+      return this.error(`Failed to get unsigned signers: ${error.message}`);
     }
   }
 }

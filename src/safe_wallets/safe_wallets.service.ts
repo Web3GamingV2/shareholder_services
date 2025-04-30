@@ -2,7 +2,7 @@
  * @Author: leelongxi leelongxi@foxmail.com
  * @Date: 2025-04-23 14:05:37
  * @LastEditors: leelongxi leelongxi@foxmail.com
- * @LastEditTime: 2025-04-30 21:14:50
+ * @LastEditTime: 2025-04-30 21:38:53
  * @FilePath: /sbng_cake/shareholder_services/src/safe_walltes/safe_walltes.service.ts
  * @Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查看配置 进行设置: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
  */
@@ -10,9 +10,11 @@ import {
   Injectable,
   Logger,
   OnModuleInit,
-  // PlainLiteralObject,
+  PlainLiteralObject,
 } from '@nestjs/common';
-import SafeApiKit from '@safe-global/api-kit';
+import SafeApiKit, {
+  SafeMultisigTransactionListResponse,
+} from '@safe-global/api-kit';
 import Safe from '@safe-global/protocol-kit';
 import { createSafeClient, SafeClient } from '@safe-global/sdk-starter-kit';
 import {
@@ -108,13 +110,9 @@ export class SafeWalletssService implements OnModuleInit {
   }
 
   // 新增方法：获取待处理交易的签名信息
-  async getTransactionConfirmations() {
+  async getTransactionConfirmations(): Promise<SafeMultisigTransactionListResponse> {
     this.ensureInitialized(); // 确保 safeClient 初始化
     try {
-      // 注意：你需要确认 safeClient 是否直接提供 getTransaction 方法
-      // 或者是否需要一个更专门的 SafeServiceClient 实例。
-      // 这里的 getTransaction 是一个示例方法名，实际方法可能不同。
-      // 查阅 @safe-global/sdk-starter-kit 或 @safe-global/safe-service-client 文档获取确切方法。
       const transactionDetails = await this.safeClient.getPendingTransactions();
 
       // transactionDetails 对象通常会包含一个 confirmations 或 signatures 数组
@@ -168,32 +166,25 @@ export class SafeWalletssService implements OnModuleInit {
         await this.protocolKit.getTransactionHash(safeTransaction);
       this.logger.log(`Safe Transaction Hash for 1/1: ${safeTxHash}`);
 
-      // 2. 签名交易 (protocolKit 使用初始化时提供的 signer 签名)
-      // 注意：对于 1/1 Safe，签名后可以直接执行，signTransaction 本身可能不是必须显式调用的
-      // 但执行 executeTransaction 时，SDK 内部会处理签名
-      // const signature = await this.protocolKit.signTransaction(safeTransaction);
-      // this.logger.log('Transaction signed by the single owner', signature);
+      const signature = await this.protocolKit.signTransaction(safeTransaction);
+      this.logger.log('Transaction signed by the single owner', signature);
 
-      // 3. 直接执行交易
-      // executeTransaction 会自动处理签名（如果需要）并将交易发送到区块链
-      // const executeTxResponse =
-      //   await this.protocolKit.executeTransaction(safeTransaction);
-      // this.logger.log('Executing 1/1 transaction...');
+      const executeTxResponse =
+        await this.protocolKit.executeTransaction(safeTransaction);
+      this.logger.log('Executing 1/1 transaction...');
 
-      // const transactionResponse =
-      //   (await executeTxResponse.transactionResponse) as {
-      //     wait: () => PlainLiteralObject;
-      //   };
-      // this.logger.log(
-      //   'Transaction executed successfully (1/1):',
-      //   transactionResponse,
-      // );
+      const transactionResponse =
+        (await executeTxResponse.transactionResponse) as {
+          wait: () => PlainLiteralObject;
+        };
+      this.logger.log(
+        'Transaction executed successfully (1/1):',
+        transactionResponse,
+      );
 
-      // // 4. 等待交易确认 (可选)
-      // const receipt = await transactionResponse.wait();
-      // this.logger.log('Transaction executed successfully (1/1):', receipt);
-      // // 你可以从 receipt 中获取交易哈希等信息
-      // console.log('Transaction Hash:', receipt);
+      // 4. 等待交易确认 (可选)
+      const receipt = await transactionResponse.wait();
+      this.logger.log('Transaction executed successfully (1/1):', receipt);
       return safeTxHash;
     } catch (error) {
       console.error('Error initializing Moralis SDK:', error);
@@ -251,6 +242,102 @@ export class SafeWalletssService implements OnModuleInit {
     } catch (error) {
       this.logger.error('Error proposing transaction:', error);
       throw error;
+    }
+  }
+
+  /**
+   * 根据待处理交易哈希获取尚未签名的所有者列表
+   * @param safeTxHash 待处理交易的哈希
+   * @returns Promise<string[]> 返回未签名所有者的地址列表
+   */
+  async getUnsignedSigners(safeTxHash: string): Promise<string[]> {
+    this.ensureProtocolInitialized();
+    this.ensureInitialized(); // 确保 safeApiKit 初始化
+    try {
+      // 1. 获取指定交易的详细信息
+      const transactionDetails =
+        await this.safeApiKit.getTransaction(safeTxHash);
+
+      // 2. 获取 Safe 的所有所有者
+      const allOwners = await this.protocolKit.getOwners();
+      const lowerCaseAllOwners = allOwners.map((owner) => owner.toLowerCase()); // 转换为小写以进行不区分大小写的比较
+
+      // 3. 获取已签名的所有者
+      const signedOwners =
+        transactionDetails.confirmations?.map((conf) =>
+          conf.owner.toLowerCase(),
+        ) || []; // 同样转换为小写
+
+      // 4. 找出未签名的所有者
+      const unsignedSigners = lowerCaseAllOwners.filter(
+        (owner) => !signedOwners.includes(owner),
+      );
+
+      this.logger.log(
+        `Unsigned signers for transaction ${safeTxHash}: ${unsignedSigners.join(', ')}`,
+      );
+      return unsignedSigners;
+    } catch (error) {
+      this.logger.error(
+        `Failed to get unsigned signers for transaction ${safeTxHash}:`,
+        error,
+      );
+      // 根据需要可以抛出更具体的错误或返回空数组
+      if (error.response?.status === 404) {
+        throw new Error(`Transaction with hash ${safeTxHash} not found.`);
+      }
+      throw new Error(
+        `An error occurred while fetching unsigned signers: ${error.message}`,
+      );
+    }
+  }
+
+  /**
+   * 使用当前服务的签名者确认（签名）一个待处理的 Safe 交易
+   * @param safeTxHash 要确认的交易的哈希
+   * @returns Promise<void>
+   */
+  async confirmTransaction(safeTxHash: string): Promise<void> {
+    this.ensureProtocolInitialized();
+    this.ensureInitialized(); // 确保 safeApiKit 初始化
+
+    try {
+      // 1. (可选) 获取交易详情以验证状态或存在性
+      const transactionDetails =
+        await this.safeApiKit.getTransaction(safeTxHash);
+      if (!transactionDetails || transactionDetails.isExecuted) {
+        throw new Error(
+          `Transaction ${safeTxHash} not found or already executed.`,
+        );
+      }
+      this.logger.log(`Attempting to confirm transaction: ${safeTxHash}`);
+      const signature = await this.protocolKit.signHash(safeTxHash);
+      this.logger.log(
+        `Generated signature for ${safeTxHash} by signer ${await this.protocolKit.getAddress()}`,
+      );
+
+      // 3. 使用 safeApiKit 将签名提交给 Safe Transaction Service
+      await this.safeApiKit.confirmTransaction(safeTxHash, signature.data);
+
+      this.logger.log(
+        `Successfully submitted confirmation for transaction ${safeTxHash} by signer ${await this.protocolKit.getAddress()}`,
+      );
+    } catch (error) {
+      this.logger.error(
+        `Failed to confirm transaction ${safeTxHash}:`,
+        error.response?.data || error.message, // 尝试记录更详细的 API 错误信息
+        error.stack,
+      );
+      // 可以根据错误类型抛出更具体的异常
+      if (error.response?.data?.message?.includes('Already confirmed')) {
+        this.logger.warn(`Signer already confirmed transaction ${safeTxHash}`);
+        // 可以选择不抛出错误，或者抛出一个特定的已知错误
+        // throw new Error(`Signer already confirmed transaction ${safeTxHash}`);
+        return; // 如果已经确认，则认为操作成功（幂等性）
+      }
+      throw new Error(
+        `Failed to confirm transaction ${safeTxHash}: ${error.message}`,
+      );
     }
   }
 }
