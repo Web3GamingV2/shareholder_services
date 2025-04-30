@@ -2,7 +2,7 @@
  * @Author: leelongxi leelongxi@foxmail.com
  * @Date: 2025-04-29 21:38:29
  * @LastEditors: leelongxi leelongxi@foxmail.com
- * @LastEditTime: 2025-04-30 12:07:46
+ * @LastEditTime: 2025-04-30 14:45:18
  * @FilePath: /shareholder_services/src/common/guards/jwt-auth/jwt.strategy.ts
  * @Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查看配置 进行设置: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
  */
@@ -28,30 +28,30 @@ export class JwtAuthStrategy extends PassportStrategy(JwtStrategy) {
     const ttl = payload.exp - payload.iat;
     const access_token = req.headers.authorization.split(' ')[1];
     const refresh_token = req.headers['x-refresh-token'] as string;
-    const supabaseClientId = `${payload.sub}:${refresh_token}`;
-    const supabaseClient = await this.supabase.getSupabaseClient(
+    const supabaseClientId = `${payload.sub}`;
+    let supabaseClient = await this.supabase.getSupabaseClient(
       supabaseClientId,
       ttl,
       access_token,
       refresh_token,
     );
     if (!supabaseClient && access_token) {
-      const newSupClient = await this.supabase.createSupabaseClient(
+      supabaseClient = await this.supabase.createSupabaseClient(
         supabaseClientId,
         ttl,
         access_token,
         refresh_token,
       );
-      if (!newSupClient) {
-        throw new Error('Unauthorized');
-      }
-      // console.log('newSupClient', newSupClient);
+    }
+    if (!supabaseClient) {
+      throw new Error('Unauthorized');
     }
     return {
       userId: payload.sub,
       sessionId: payload.session_id,
       supabaseClientId: supabaseClientId,
-      refresh_token: refresh_token,
+      refreshToken: refresh_token,
+      supabaseClient: supabaseClient,
     }; // 返回用户信息
   }
 }

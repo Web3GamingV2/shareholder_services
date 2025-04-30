@@ -2,7 +2,7 @@
  * @Author: leelongxi leelongxi@foxmail.com
  * @Date: 2025-04-19 11:15:12
  * @LastEditors: leelongxi leelongxi@foxmail.com
- * @LastEditTime: 2025-04-30 12:14:43
+ * @LastEditTime: 2025-04-30 14:37:14
  * @FilePath: /sbng_cake/shareholder_services/src/auth/auth.service.ts
  * @Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查看配置 进行设置: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
  */
@@ -20,14 +20,14 @@ import { SupabaseService } from 'src/supabase/supabase.service';
 import { BaseController, BaseResponse } from 'src/common/base';
 import { EmailPasswordDto } from 'src/common/dtos/email-password.dto';
 import { PGRST116 } from 'src/common/constants/code';
-import { EnrollTotpDto } from 'src/common/dtos/enroll-totp.dto';
-import { createClient, Factor, User } from '@supabase/supabase-js';
+import { Factor, User } from '@supabase/supabase-js';
 import { TotpVerifyDto } from 'src/common/dtos/totp-verify.dto';
 import { UnenrollTotpDto } from 'src/common/dtos/unenroll-totp.dto';
 import { TotpCodeDto } from 'src/common/dtos/totp-code.dto';
 import { ADMIN_EMAILS_KEY } from 'src/common/constants/redis';
 import { RedisService } from 'src/redis/redis.service';
 import { AuthInterface } from './auth.interface';
+import { EnrollTotpDto } from 'src/common/dtos/enroll-totp.dto';
 
 @Injectable()
 export class AuthService extends BaseController {
@@ -37,6 +37,37 @@ export class AuthService extends BaseController {
     private readonly redisService: RedisService,
   ) {
     super();
+  }
+
+  async hasVerifiedTotpFactor(supabaseClientId: string): Promise<boolean> {
+    const userClient =
+      await this.supabaseService.getSupabaseClient(supabaseClientId);
+    if (!userClient) {
+      throw new InternalServerErrorException(
+        '无法获取用户客户端以检查 MFA 状态。',
+      );
+    }
+
+    try {
+      const { data, error } = await userClient.auth.mfa.listFactors();
+
+      if (error) {
+        console.error(
+          `获取用户 ${supabaseClientId} 的 MFA 因素列表时出错:`,
+          error,
+        );
+        // 根据错误类型决定处理方式
+        throw new InternalServerErrorException('无法获取 MFA 信息。');
+      }
+
+      // 检查是否存在 totp 数组，并且其中至少有一个 factor 的 status 是 'verified'
+      const hasVerified =
+        data?.totp?.some((factor) => factor.status === 'verified') ?? false;
+
+      return hasVerified;
+    } catch (error) {
+      throw new InternalServerErrorException('检查 MFA 状态时发生内部错误。');
+    }
   }
 
   async listFactorsTotp(supabaseClientId: string): Promise<Factor[]> {
@@ -92,21 +123,14 @@ export class AuthService extends BaseController {
         throw new InternalServerErrorException('无法创建用户客户端。');
       }
 
-      const userId = data?.user.id;
-      const { data: profileData, error: profileError } = await userClient
-        .from('profiles')
-        .select('is_otp_enabled')
-        .eq('id', userId)
-        .single(); // 假设每个用户 ID 对应唯一的 profile
-
-      if (profileError) {
-        throw new InternalServerErrorException('无法获取用户 Profile。');
-      }
+      // 检查用户是否已经验证了 TOTP
+      const hasVerifiedTotp =
+        await this.hasVerifiedTotpFactor(supabaseClientId);
       return {
         accessToken: data.session.access_token,
         refreshToken: data.session.refresh_token,
         userId: data.user.id,
-        needsMfa: profileData.is_otp_enabled,
+        needsMfa: hasVerifiedTotp,
       };
     } catch (error) {
       if (
@@ -192,86 +216,89 @@ export class AuthService extends BaseController {
     }
   }
 
-  /**
-   * 3. Enroll TOTP (Request Step) - Generates QR code/secret
-   * Requires the user to be authenticated (pass user object or ID).
-   */
   async enrollTotp(
     dto: EnrollTotpDto,
-  ): Promise<
-    BaseResponse<{ factorId: string; qrCode: string; secret: string }>
-  > {
-    const supabase = this.supabaseService.supabaseAdmin; // Use admin client for MFA enrollment
+    supabaseClientId: string,
+  ): Promise<{ factorId: string; qrCode: string; secret: string }> {
+    const userSupabaseClient =
+      await this.supabaseService.getSupabaseClient(supabaseClientId);
+
     try {
       const {
         data: { user },
         error: userError,
-      } = await supabase.auth.getUser(dto.accessToken);
+      } = await userSupabaseClient.auth.getUser();
 
       if (userError || !user) {
-        return this.error(
-          '无效的用户令牌或令牌已过期。',
-          HttpStatus.UNAUTHORIZED,
+        throw new UnauthorizedException('无效的用户令牌或令牌已过期。');
+      }
+
+      const { data: factorsData, error: factorsError } =
+        await userSupabaseClient.auth.mfa.listFactors();
+
+      if (factorsError) {
+        console.error(
+          `获取用户 ${user.id} 的 MFA 因素列表时出错:`,
+          factorsError,
+        );
+        throw new InternalServerErrorException('无法获取 MFA 信息。');
+      }
+
+      const hasVerified =
+        factorsData?.totp?.some((factor) => factor.status === 'verified') ??
+        false;
+
+      if (hasVerified) {
+        throw new BadRequestException('用户已启用 TOTP 认证，无法重复注册。');
+      }
+
+      console.log('enrollTotp', factorsData.totp);
+
+      const { data: enrollData, error: enrollError } =
+        await userSupabaseClient.auth.mfa.enroll({
+          factorType: 'totp',
+          issuer: dto.issuer, // Optional: Customize issuer name
+          friendlyName: dto.friendlyName + ' TOTP', // Optional: Customize friendly name
+        });
+
+      if (enrollError) {
+        console.error(`为用户 ${user.id} 注册 TOTP 时出错:`, enrollError);
+        throw new InternalServerErrorException('无法开始 TOTP 注册流程。');
+      }
+
+      if (
+        !enrollData ||
+        !enrollData.id ||
+        !enrollData.totp?.qr_code ||
+        !enrollData.totp?.secret
+      ) {
+        console.error(
+          `为用户 ${user.id} 注册 TOTP 时返回的数据不完整:`,
+          enrollData,
+        );
+        throw new InternalServerErrorException(
+          'TOTP 注册流程未能返回必要信息。',
         );
       }
 
-      // 2. Create a temporary Supabase client instance authenticated as the user
-      // This ensures the enroll operation runs with the correct user context
-      // without modifying the shared client instance.
-      const userSupabaseClient = createClient(
-        this.configService.get<string>('SUPABASE_URL'),
-        this.configService.get<string>('SUPABASE_ANON_KEY'), // Use anon key for initialization
-        {
-          global: {
-            headers: { Authorization: `Bearer ${dto.accessToken}` }, // Pass the user's token
-          },
-          auth: {
-            autoRefreshToken: false,
-            persistSession: false,
-            detectSessionInUrl: false,
-          },
-        },
-      );
-
-      const { data, error } = await userSupabaseClient.auth.mfa.enroll({
-        factorType: 'totp',
-        issuer: 'YourAppName', // Optional: Customize issuer name in authenticator app
-        friendlyName: 'YourAppName TOTP', // Optional: Customize friendly name
-      });
-
-      if (error) {
-        return this.error('无法开始 TOTP 注册流程。');
-      }
-
-      if (!data || !data.id || !data.totp?.qr_code || !data.totp?.secret) {
-        return this.error(
-          '无法开始 TOTP 注册流程。',
-          HttpStatus.INTERNAL_SERVER_ERROR,
-        );
-      }
-      // Return factorId, QR code (as SVG string or data URL), and secret
-      return this.success(
-        {
-          factorId: data.id,
-          qrCode: data.totp.qr_code, // This is typically an SVG string
-          secret: data.totp.secret,
-        },
-        '请扫描二维码或手动输入密钥，并验证一次性密码以完成绑定。',
-      );
+      // 5. Return factorId, QR code, and secret directly
+      return {
+        factorId: enrollData.id,
+        qrCode: enrollData.totp.qr_code, // This is typically an SVG string
+        secret: enrollData.totp.secret,
+      };
     } catch (error) {
       if (
+        error instanceof UnauthorizedException ||
         error instanceof BadRequestException ||
         error instanceof InternalServerErrorException
       ) {
-        return this.error(error.message, error.getStatus());
+        throw error;
       }
-      return this.error(
-        '请求 TOTP 注册时发生内部错误。',
-        HttpStatus.INTERNAL_SERVER_ERROR,
-      );
+      console.error('请求 TOTP 注册时发生意外错误:', error);
+      throw new InternalServerErrorException('请求 TOTP 注册时发生内部错误。');
     }
   }
-
   /**
    * 3. Verify and Bind TOTP (Binding Step)
    * Requires the user to be authenticated.
