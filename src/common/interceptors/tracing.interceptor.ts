@@ -1,79 +1,80 @@
-// /*
-//  * @Author: leelongxi leelongxi@foxmail.com
-//  * @Date: 2025-04-22 21:16:56
-//  * @LastEditors: leelongxi leelongxi@foxmail.com
-//  * @LastEditTime: 2025-04-22 21:18:05
-//  * @FilePath: /sbng_cake/shareholder_services/src/common/interceptors/tracing.interceptor.ts
-//  * @Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查看配置 进行设置: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
-//  */
-// import {
-//   Injectable,
-//   NestInterceptor,
-//   ExecutionContext,
-//   CallHandler,
-// } from '@nestjs/common';
-// import { Observable, throwError } from 'rxjs';
-// import { catchError, tap } from 'rxjs/operators';
-// import { TraceService } from '../utils/opentelemetry'; // 确保路径正确
-// import { SpanStatusCode, Span, trace } from '@opentelemetry/api';
-// import { SemanticAttributes } from '@opentelemetry/semantic-conventions'; // 用于标准属性
+/*
+ * @Author: leelongxi leelongxi@foxmail.com
+ * @Date: 2025-04-22 21:16:56
+ * @LastEditors: leelongxi leelongxi@foxmail.com
+ * @LastEditTime: 2025-04-30 16:52:59
+ * @FilePath: /shareholder_services/src/common/interceptors/tracing.interceptor.ts
+ * @Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查看配置 进行设置: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
+ */
+import {
+  CallHandler,
+  ExecutionContext,
+  Injectable,
+  NestInterceptor,
+} from '@nestjs/common';
+import { Observable } from 'rxjs';
+import { tap, catchError } from 'rxjs/operators';
+import { SpanStatusCode } from '@opentelemetry/api';
+import { TraceService } from '../utils/opentelemetry';
 
-// @Injectable()
-// export class TracingInterceptor implements NestInterceptor {
-//   intercept(context: ExecutionContext, next: CallHandler): Observable<any> {
-//     const tracer = TraceService.getTracer();
-//     if (!tracer) {
-//       // 如果追踪未初始化，则直接执行，不创建 Span
-//       return next.handle();
-//     }
+@Injectable()
+export class TraceInterceptor implements NestInterceptor {
+  intercept(context: ExecutionContext, next: CallHandler): Observable<any> {
+    const req = context.switchToHttp().getRequest();
 
-//     const handler = context.getHandler();
-//     const controller = context.getClass();
-//     const spanName = `${controller.name}.${handler.name}`; // e.g., "UsersController.findAll"
+    const tracer = TraceService.getTracer();
+    if (!tracer) {
+      return next.handle();
+    }
 
-//     // 尝试从现有上下文中获取父 Span (例如由 HttpInstrumentation 创建的)
-//     const parentSpan = TraceService.getCurrentSpan();
-//     const ctx = parentSpan
-//       ? trace.setSpan(context.active(), parentSpan)
-//       : undefined;
+    const spanName = `${req.method} ${req.path}`;
+    return new Observable((observer) => {
+      tracer.startActiveSpan(spanName, async (span) => {
+        try {
+          // 添加一些标准属性
+          span.setAttribute('http.method', req.method);
+          span.setAttribute('http.url', req.url);
+          span.setAttribute('http.user_agent', req.headers['user-agent'] || '');
+          span.addEvent('http.request.start');
 
-//     // 使用 startActiveSpan 创建新的子 Span 并激活它
-//     return tracer.startActiveSpan(
-//       spanName,
-//       (span: Span) => {
-//         // 添加一些通用的属性
-//         span.setAttribute(SemanticAttributes.CODE_NAMESPACE, controller.name);
-//         span.setAttribute(SemanticAttributes.CODE_FUNCTION, handler.name);
+          // 添加自定义属性
+          span.setAttribute('custom.userId', req.user?.id || '');
 
-//         // 处理请求 (next.handle() 返回 Observable)
-//         return next.handle().pipe(
-//           tap({
-//             next: () => {
-//               // 成功完成
-//               span.setStatus({ code: SpanStatusCode.OK });
-//             },
-//             // 注意：complete 不一定表示成功，只是流结束
-//           }),
-//           catchError((error) => {
-//             // 发生错误
-//             span.recordException(error); // 记录异常
-//             span.setStatus({
-//               code: SpanStatusCode.ERROR,
-//               message: error.message,
-//             });
-//             // 重新抛出错误，以便 NestJS 的异常过滤器可以处理
-//             return throwError(() => error);
-//           }),
-//           // 使用 finalize 确保无论成功、失败还是取消，span 都被结束
-//           tap({
-//             finalize: () => {
-//               span.end(); // 结束 Span
-//             },
-//           }),
-//         );
-//       },
-//       undefined,
-//       ctx,
-//     ); // 传入父上下文
-//   }
-// }
+          const spanContext = span.spanContext();
+          console.log(
+            `Tracing - ${spanName} - TraceId: ${spanContext.traceId} - SpanId: ${spanContext.spanId}`,
+          );
+          // 传递 span 到上下文中
+          req.spanId = spanContext.spanId;
+          req.traceId = spanContext.traceId;
+
+          // 执行原有逻辑
+          next
+            .handle()
+            .pipe(
+              tap(() => {
+                span.setStatus({ code: SpanStatusCode.OK });
+                span.addEvent('http.request.success');
+                span.end();
+              }),
+              catchError((err) => {
+                span.setStatus({
+                  code: SpanStatusCode.ERROR,
+                  message: err.message,
+                });
+                span.recordException(err);
+                span.end();
+                throw err;
+              }),
+            )
+            .subscribe(observer);
+        } catch (err) {
+          span.setStatus({ code: SpanStatusCode.ERROR, message: err.message });
+          span.recordException(err);
+          span.end();
+          observer.error(err);
+        }
+      });
+    });
+  }
+}

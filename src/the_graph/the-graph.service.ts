@@ -3,7 +3,7 @@
  * @Author: leelongxi leelongxi@foxmail.com
  * @Date: 2025-04-21 22:38:14
  * @LastEditors: leelongxi leelongxi@foxmail.com
- * @LastEditTime: 2025-04-24 15:28:51
+ * @LastEditTime: 2025-04-30 15:14:05
  * @FilePath: /sbng_cake/shareholder_services/src/the-graph/the-graph.service.ts
  * @Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查看配置 进行设置: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
  */
@@ -68,7 +68,6 @@ export class TheGraphService implements OnModuleInit {
   ): Promise<MultiSigWalletAdressChanged> {
     try {
       const queryForId = GET_MULTI_SIG_CHANGES_ID(id);
-      // <<< 使用 client.request 发送请求，传入 gql 定义的查询 >>>
       const response =
         await this.client.request<SingleChangeResponse>(queryForId);
       const resultData = response.multiSigWalletAdressChanged;

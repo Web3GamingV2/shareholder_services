@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-var-requires */
-const { Resource } = require('@opentelemetry/resources').default;
+const Resource = require('@opentelemetry/resources');
 import { OTLPTraceExporter } from '@opentelemetry/exporter-trace-otlp-proto';
 import { NodeTracerProvider } from '@opentelemetry/sdk-trace-node';
 import { ExpressInstrumentation } from '@opentelemetry/instrumentation-express';
@@ -29,9 +29,6 @@ import {
 import { hostname } from 'os';
 import { diag } from '@opentelemetry/api'; // 用于内部日志
 
-// 可选：设置 OpenTelemetry 内部日志级别
-// diag.setLogger(new DiagConsoleLogger(), DiagLogLevel.INFO);
-
 interface TracingConfig {
   serviceName: string;
   serviceVersion: string;
@@ -59,7 +56,7 @@ export class TraceService {
       diag.info('Initializing TraceService...');
 
       // 1. 创建资源属性 (使用新的 Semantic Conventions)
-      const resource = new Resource({
+      const resource = Resource.resourceFromAttributes({
         [SEMRESATTRS_HOST_NAME]: hostname(),
         [SEMRESATTRS_SERVICE_NAME]: config.serviceName,
         [SEMRESATTRS_SERVICE_VERSION]: config.serviceVersion,
@@ -70,7 +67,6 @@ export class TraceService {
       const otlpExporter = new OTLPTraceExporter({
         url: config.exporterUrl,
         headers: {},
-        // concurrencyLimit: 10, // 可选：根据需要调整并发限制
       });
 
       // 3. 创建 Span Processors 数组
@@ -92,7 +88,7 @@ export class TraceService {
 
       // 5. 注册 Provider (在新版本中通常是必须的，以设置全局 provider)
       this.provider.register();
-      diag.info('NodeTracerProvider registered.');
+      console.info('NodeTracerProvider registered.');
 
       // 6. 注册 Instrumentations
       registerInstrumentations({
@@ -100,19 +96,17 @@ export class TraceService {
         instrumentations: [
           new HttpInstrumentation(), // 自动追踪 HTTP 请求
           new ExpressInstrumentation(), // 自动追踪 Express 中间件和路由
-          // 根据需要添加其他 instrumentations, 例如:
-          // new NestInstrumentation(), // 如果使用 @opentelemetry/instrumentation-nestjs-core
-          // new PgInstrumentation(), // 如果使用 pg 数据库驱动
         ],
       });
-      diag.info('Instrumentations registered.');
+
+      console.info('Instrumentations registered.');
 
       // 7. 获取 Tracer
       this.tracer = trace.getTracer(config.serviceName, config.serviceVersion);
       this.initialized = true;
-      diag.info('TraceService initialized successfully.');
+      console.info('TraceService initialized successfully.');
     } catch (error) {
-      diag.error('Failed to initialize TraceService:', error);
+      console.log('Failed to initialize TraceService:', error);
       // 根据需要决定是否抛出错误或进行其他处理
       // throw error;
     }

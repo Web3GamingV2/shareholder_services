@@ -12,7 +12,7 @@ export class MoralisService implements OnModuleInit {
   constructor(private configService: ConfigService) {}
 
   async onModuleInit() {
-    console.log('MoralisService', Moralis.Core.isStarted);
+    return;
 
     if (Moralis.Core.isStarted) {
       this.logger.log('Moralis SDK is already initialized.');
