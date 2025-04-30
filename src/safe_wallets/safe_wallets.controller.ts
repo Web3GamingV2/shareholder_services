@@ -2,7 +2,7 @@
  * @Author: leelongxi leelongxi@foxmail.com
  * @Date: 2025-04-23 14:05:46
  * @LastEditors: leelongxi leelongxi@foxmail.com
- * @LastEditTime: 2025-04-30 21:33:45
+ * @LastEditTime: 2025-04-30 21:43:45
  * @FilePath: /sbng_cake/shareholder_services/src/safe_wallets/safe_wallets.controller.ts
  * @Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查看配置 进行设置: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
  */
@@ -105,6 +105,25 @@ export class SafeWalletsController extends BaseController {
         error.stack,
       );
       return this.error(`Failed to get unsigned signers: ${error.message}`);
+    }
+  }
+
+  @Get('is-executed/:safeTxHash') // 新增：检查交易是否执行的端点
+  @Public() // 根据需要决定是否公开
+  async isTransactionExecuted(
+    @Param('safeTxHash') safeTxHash: string,
+  ): Promise<BaseResponse<boolean>> {
+    try {
+      const isExecuted =
+        await this.safeWalletssService.isTransactionExecuted(safeTxHash);
+      return this.success(isExecuted);
+    } catch (error) {
+      console.error(
+        `Failed to check execution status for tx ${safeTxHash}: ${error.message}`,
+        error.stack,
+      );
+      // 注意：Service 层在 404 时返回 false，这里只处理其他错误
+      return this.error(`Failed to check execution status: ${error.message}`);
     }
   }
 }

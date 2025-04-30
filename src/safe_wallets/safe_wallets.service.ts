@@ -2,7 +2,7 @@
  * @Author: leelongxi leelongxi@foxmail.com
  * @Date: 2025-04-23 14:05:37
  * @LastEditors: leelongxi leelongxi@foxmail.com
- * @LastEditTime: 2025-04-30 21:38:53
+ * @LastEditTime: 2025-04-30 21:42:18
  * @FilePath: /sbng_cake/shareholder_services/src/safe_walltes/safe_walltes.service.ts
  * @Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查看配置 进行设置: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
  */
@@ -106,6 +106,45 @@ export class SafeWalletssService implements OnModuleInit {
     } catch (error) {
       console.error('Error initializing Moralis SDK:', error);
       this.isInitialized = false;
+    }
+  }
+
+  /**
+   * 检查指定的 Safe 交易是否已经执行完成
+   * @param safeTxHash 要检查的交易的哈希
+   * @returns Promise<boolean> 如果交易已执行则返回 true，否则返回 false
+   */
+  async isTransactionExecuted(safeTxHash: string): Promise<boolean> {
+    this.ensureInitialized(); // 确保 safeApiKit 初始化
+
+    try {
+      this.logger.log(
+        `Checking execution status for transaction: ${safeTxHash}`,
+      );
+      const transactionDetails =
+        await this.safeApiKit.getTransaction(safeTxHash);
+
+      this.logger.log(
+        `Transaction ${safeTxHash} execution status: ${transactionDetails.isExecuted}`,
+      );
+      return transactionDetails.isExecuted;
+    } catch (error) {
+      this.logger.error(
+        `Failed to check execution status for transaction ${safeTxHash}:`,
+        error.response?.data || error.message,
+        error.stack,
+      );
+      // 如果交易未找到 (404)，可以认为它未执行
+      if (error.response?.status === 404) {
+        this.logger.warn(
+          `Transaction ${safeTxHash} not found. Assuming not executed.`,
+        );
+        return false;
+      }
+      // 对于其他错误，重新抛出，让调用者处理
+      throw new Error(
+        `Failed to check execution status for transaction ${safeTxHash}: ${error.message}`,
+      );
     }
   }
 
