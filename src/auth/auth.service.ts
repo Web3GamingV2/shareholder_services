@@ -2,7 +2,7 @@
  * @Author: leelongxi leelongxi@foxmail.com
  * @Date: 2025-04-19 11:15:12
  * @LastEditors: leelongxi leelongxi@foxmail.com
- * @LastEditTime: 2025-04-30 11:40:56
+ * @LastEditTime: 2025-04-30 12:14:43
  * @FilePath: /sbng_cake/shareholder_services/src/auth/auth.service.ts
  * @Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查看配置 进行设置: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
  */
@@ -92,34 +92,21 @@ export class AuthService extends BaseController {
         throw new InternalServerErrorException('无法创建用户客户端。');
       }
 
-      // 检查用户是否开启了 MFA
-      const { data: factorsData, error: factorsError } =
-        await userClient.auth.mfa.listFactors();
-      if (factorsError) {
-        throw new InternalServerErrorException('无法获取 MFA 信息。');
-      }
-      const hasMfa =
-        factorsData?.totp?.some((factor) => factor.status === 'verified') ||
-        false;
+      const userId = data?.user.id;
+      const { data: profileData, error: profileError } = await userClient
+        .from('profiles')
+        .select('is_otp_enabled')
+        .eq('id', userId)
+        .single(); // 假设每个用户 ID 对应唯一的 profile
 
-      // 如果用户开启了 MFA，但是没有通过 MFA 验证，则需要进行 MFA 验证
-      if (hasMfa) {
-        const totpFactor = factorsData.totp.find(
-          (factor) => factor.status === 'verified',
-        );
-        return {
-          accessToken: null,
-          needsMfa: true,
-          userId: data.user.id,
-          factorId: totpFactor.id,
-        };
+      if (profileError) {
+        throw new InternalServerErrorException('无法获取用户 Profile。');
       }
-
       return {
         accessToken: data.session.access_token,
         refreshToken: data.session.refresh_token,
         userId: data.user.id,
-        needsMfa: false,
+        needsMfa: profileData.is_otp_enabled,
       };
     } catch (error) {
       if (
