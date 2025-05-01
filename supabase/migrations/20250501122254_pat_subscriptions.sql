@@ -58,6 +58,8 @@ EXECUTE FUNCTION set_expire_at();
 CREATE TRIGGER handle_updated_at BEFORE UPDATE ON public.pat_subscriptions
   FOR EACH ROW EXECUTE PROCEDURE extensions.moddatetime (updated_at);
 
+ALTER TABLE public.pat_subscriptions ENABLE ROW LEVEL SECURITY;
+
 -- 可选：添加注释说明各字段用途
 COMMENT ON TABLE public.pat_subscriptions IS '存储用户 PAT 认购信息';
 COMMENT ON COLUMN public.pat_subscriptions.user_address IS '发起认购的用户钱包地址';
