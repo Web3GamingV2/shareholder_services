@@ -2,7 +2,7 @@
  * @Author: leelongxi leelongxi@foxmail.com
  * @Date: 2025-04-23 14:05:37
  * @LastEditors: leelongxi leelongxi@foxmail.com
- * @LastEditTime: 2025-04-30 21:42:18
+ * @LastEditTime: 2025-05-01 16:41:55
  * @FilePath: /sbng_cake/shareholder_services/src/safe_walltes/safe_walltes.service.ts
  * @Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查看配置 进行设置: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
  */
@@ -11,11 +11,15 @@ import {
   Logger,
   OnModuleInit,
   PlainLiteralObject,
+  // PlainLiteralObject,
 } from '@nestjs/common';
 import SafeApiKit, {
   SafeMultisigTransactionListResponse,
 } from '@safe-global/api-kit';
-import Safe from '@safe-global/protocol-kit';
+import Safe, {
+  buildSignatureBytes,
+  EthSafeSignature,
+} from '@safe-global/protocol-kit';
 import { createSafeClient, SafeClient } from '@safe-global/sdk-starter-kit';
 import {
   MetaTransactionData,
@@ -27,8 +31,10 @@ import {
   SIGNER_PRIVATE_KEY,
   sepoliaNetworkConfig,
   PAT_PROXY_ADDRESS,
+  // SIGNER_ADDRESS,
 } from 'src/common/constants/safeWallet';
 import { Hex } from 'src/common/interfaces';
+// import { ethers } from 'ethers';
 
 @Injectable()
 export class SafeWalletssService implements OnModuleInit {
@@ -41,7 +47,7 @@ export class SafeWalletssService implements OnModuleInit {
   private isApiInitialized = false;
 
   async onModuleInit() {
-    this.createSafeClient();
+    this.createApkSafeClient();
     this.createSafeProtocolClient();
     this.createSafeApiKit();
   }
@@ -63,19 +69,19 @@ export class SafeWalletssService implements OnModuleInit {
     }
   }
 
+  // TODO: 每次使用新的 safeClient
   private async createSafeProtocolClient(): Promise<void> {
     if (this.isProtocolInitialized) {
       console.log('SafeProtocolClient', this.protocolKit);
       return;
     }
     try {
-      const protocolKit = await Safe.init({
+      this.protocolKit = await Safe.init({
         safeAddress: SAFE_ADDRESS,
         provider: RPC_URL,
         signer: SIGNER_PRIVATE_KEY,
       });
-      this.protocolKit = protocolKit;
-      const isSafeDeployed = await protocolKit.isSafeDeployed(); // True
+      const isSafeDeployed = await this.protocolKit.isSafeDeployed(); // True
       this.logger.log(
         'Safe Protocol Client initialized successfully.',
         isSafeDeployed,
@@ -88,7 +94,7 @@ export class SafeWalletssService implements OnModuleInit {
     }
   }
 
-  private async createSafeClient(): Promise<string> {
+  private async createApkSafeClient(): Promise<string> {
     try {
       if (this.isInitialized) {
         console.log('SafeWalltesService', this.safeClient);
@@ -185,7 +191,7 @@ export class SafeWalletssService implements OnModuleInit {
     }
   }
 
-  // 创建一个多签交易
+  // 创建一个多签交易 签名即可不要执行等待所有人签完后执行
   async createTransaction(encodedCallData: string): Promise<string> {
     this.ensureProtocolInitialized();
     try {
@@ -196,8 +202,8 @@ export class SafeWalletssService implements OnModuleInit {
         data: encodedCallData,
         operation: OperationType.Call,
       };
-
-      const safeTransaction = await this.protocolKit.createTransaction({
+      let currentProtocolKit = this.protocolKit;
+      let safeTransaction = await currentProtocolKit.createTransaction({
         transactions: [safeTransactionData],
       });
       // 1. 获取交易哈希 (可选，但有助于追踪)
@@ -205,12 +211,39 @@ export class SafeWalletssService implements OnModuleInit {
         await this.protocolKit.getTransactionHash(safeTransaction);
       this.logger.log(`Safe Transaction Hash for 1/1: ${safeTxHash}`);
 
-      const signature = await this.protocolKit.signTransaction(safeTransaction);
-      this.logger.log('Transaction signed by the single owner', signature);
+      const signature = await this.protocolKit.signTransaction(
+        safeTransaction,
+        'eth_sign',
+      );
+      console.log(signature);
 
+      currentProtocolKit = await this.protocolKit.connect({
+        provider: RPC_URL, // 替换为你的提供
+        safeAddress: SAFE_ADDRESS,
+        // signer: '0x7fc93b5620662f523AE2387aE38A444baaE68f88',
+        signer:
+          '14f62f6ce4fd14a56241addc06b1ff7ab3f5c4f2319a1e637a4171e9df8485d8',
+      });
+
+      safeTransaction =
+        await currentProtocolKit.signTransaction(safeTransaction);
+
+      console.log('Signing safeTransactionV2 transaction...', safeTransaction);
+
+      currentProtocolKit = await this.protocolKit.connect({
+        provider: RPC_URL, // 替换为你的提供
+        safeAddress: SAFE_ADDRESS,
+        // signer: '0x7fc93b5620662f523AE2387aE38A444baaE68f88',
+        signer:
+          'df88309e6c332657e972973a28fd6226faaa3247bcbbf6efaf924014b2619e60',
+      });
+      safeTransaction =
+        await currentProtocolKit.signTransaction(safeTransaction);
+
+      console.log('Signing safeTransactionV3 transaction...', safeTransaction);
       const executeTxResponse =
         await this.protocolKit.executeTransaction(safeTransaction);
-      this.logger.log('Executing 1/1 transaction...');
+      console.log('Executing 1/1 transaction...', executeTxResponse);
 
       const transactionResponse =
         (await executeTxResponse.transactionResponse) as {
@@ -231,6 +264,20 @@ export class SafeWalletssService implements OnModuleInit {
     }
   }
 
+  async executeTransaction(singer: string): Promise<void> {
+    this.ensureProtocolInitialized();
+    try {
+      console.log('singer', singer);
+      // const protocolKit = await this.protocolKit.connect({
+      //   safeAddress: SAFE_ADDRESS,
+      //   signer: singer,
+      // });
+    } catch (error) {
+      console.error('Error initializing Moralis SDK:', error);
+      throw error;
+    }
+  }
+
   /**
    * 创建交易并提议到 Safe Transaction Service (多签第一步)
    * @param safeTransactionData 交易元数据
@@ -244,6 +291,12 @@ export class SafeWalletssService implements OnModuleInit {
     this.ensureInitialized(); // 确保 safeClient 也初始化
 
     try {
+      const pkOwner = await Safe.init({
+        provider: RPC_URL,
+        safeAddress: SAFE_ADDRESS,
+        signer: SIGNER_PRIVATE_KEY,
+      });
+
       const safeTransactionData: MetaTransactionData = {
         to: PAT_PROXY_ADDRESS as Hex,
         value: '0', // 1 wei
@@ -251,18 +304,20 @@ export class SafeWalletssService implements OnModuleInit {
         operation: OperationType.Call,
       };
       // 1. 创建 Safe 交易对象
-      const safeTransaction = await this.protocolKit.createTransaction({
+      const safeTransaction = await pkOwner.createTransaction({
         transactions: [safeTransactionData],
       });
 
       // 2. 获取交易哈希
-      const safeTxHash =
-        await this.protocolKit.getTransactionHash(safeTransaction);
+      const safeTxHash = await pkOwner.getTransactionHash(safeTransaction);
       this.logger.log(`Generated Safe Transaction Hash: ${safeTxHash}`);
-
-      // 3. 使用当前 signer 对交易哈希进行签名
-      const senderSignature = await this.protocolKit.signHash(safeTxHash);
-
+      const signTransaction = await pkOwner.signTransaction(safeTransaction);
+      const signatureOwner = signTransaction.getSignature(
+        senderAddress,
+      ) as EthSafeSignature;
+      if (!signatureOwner) {
+        throw new Error(`Signature not found for ${senderAddress}`);
+      }
       // 4. 使用 safeClient 将交易提议给 Safe Transaction Service
       // 注意：这里的 proposeTransaction 方法名和参数结构依赖于 safeClient 的实现
       // 查阅 @safe-global/sdk-starter-kit 或 @safe-global/safe-service-client 文档确认
@@ -271,7 +326,7 @@ export class SafeWalletssService implements OnModuleInit {
         safeTransactionData: safeTransaction.data,
         safeTxHash,
         senderAddress: senderAddress,
-        senderSignature: senderSignature.data,
+        senderSignature: buildSignatureBytes([signatureOwner]),
       });
 
       this.logger.log(
@@ -335,25 +390,59 @@ export class SafeWalletssService implements OnModuleInit {
    * 使用当前服务的签名者确认（签名）一个待处理的 Safe 交易
    * @param safeTxHash 要确认的交易的哈希
    * @returns Promise<void>
+   *  14f62f6ce4fd14a56241addc06b1ff7ab3f5c4f2319a1e637a4171e9df8485d8
    */
-  async confirmTransaction(safeTxHash: string): Promise<void> {
+  async confirmTransaction(safeTxHash: string, signer: string): Promise<void> {
     this.ensureProtocolInitialized();
     this.ensureInitialized(); // 确保 safeApiKit 初始化
 
     try {
       // 1. (可选) 获取交易详情以验证状态或存在性
-      const transactionDetails =
-        await this.safeApiKit.getTransaction(safeTxHash);
-      if (!transactionDetails || transactionDetails.isExecuted) {
+      const txDetails = await this.safeApiKit.getTransaction(safeTxHash);
+      if (!txDetails || txDetails.isExecuted) {
         throw new Error(
           `Transaction ${safeTxHash} not found or already executed.`,
         );
       }
       this.logger.log(`Attempting to confirm transaction: ${safeTxHash}`);
+
+      // 2. 检查签名数量是否达到阈值
+      const threshold = await this.protocolKit.getThreshold();
+      const confirmationsCount = txDetails.confirmations?.length || 0;
+
+      if (confirmationsCount < threshold) {
+        throw new Error(
+          `Not enough confirmations to execute. Have ${confirmationsCount}, need ${threshold}.`,
+        );
+      }
+
+      // 3. 重建交易对象
+      const safeTransactionData: MetaTransactionData = {
+        to: txDetails.to,
+        value: txDetails.value,
+        data: txDetails.data || '0x',
+        operation: txDetails.operation,
+        // 其他必要字段
+      };
+
+      const safeTransaction = await this.protocolKit.createTransaction({
+        transactions: [safeTransactionData],
+        options: {
+          nonce: txDetails.nonce,
+        },
+      });
+
+      console.log(txDetails.confirmations);
+
+      const signTransaction =
+        await this.protocolKit.signTransaction(safeTransaction);
+      const signatureSigner = signTransaction.getSignature(
+        signer,
+      ) as EthSafeSignature;
+
       const signature = await this.protocolKit.signHash(safeTxHash);
-      this.logger.log(
-        `Generated signature for ${safeTxHash} by signer ${await this.protocolKit.getAddress()}`,
-      );
+
+      console.log(signature, signatureSigner);
 
       // 3. 使用 safeApiKit 将签名提交给 Safe Transaction Service
       await this.safeApiKit.confirmTransaction(safeTxHash, signature.data);

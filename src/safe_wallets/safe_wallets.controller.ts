@@ -2,7 +2,7 @@
  * @Author: leelongxi leelongxi@foxmail.com
  * @Date: 2025-04-23 14:05:46
  * @LastEditors: leelongxi leelongxi@foxmail.com
- * @LastEditTime: 2025-04-30 21:43:45
+ * @LastEditTime: 2025-05-01 15:55:14
  * @FilePath: /sbng_cake/shareholder_services/src/safe_wallets/safe_wallets.controller.ts
  * @Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查看配置 进行设置: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
  */
@@ -105,6 +105,26 @@ export class SafeWalletsController extends BaseController {
         error.stack,
       );
       return this.error(`Failed to get unsigned signers: ${error.message}`);
+    }
+  }
+
+  @Post('confirm-transaction')
+  @Public()
+  async confirmTransaction(
+    @Body('safeTxHash') safeTxHash: string,
+    @Body('signer') signer: string,
+  ): Promise<BaseResponse<PlainLiteralObject>> {
+    try {
+      await this.safeWalletssService.confirmTransaction(safeTxHash, signer);
+      return this.success({
+        message: 'Transaction confirmed successfully.',
+      });
+    } catch (error) {
+      console.error(
+        `Failed to confirm transaction ${safeTxHash}: ${error.message}`,
+        error.stack,
+      );
+      return this.error(`Failed to confirm transaction: ${error.message}`);
     }
   }
 
