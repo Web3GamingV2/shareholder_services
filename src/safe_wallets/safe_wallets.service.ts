@@ -2,7 +2,7 @@
  * @Author: leelongxi leelongxi@foxmail.com
  * @Date: 2025-04-23 14:05:37
  * @LastEditors: leelongxi leelongxi@foxmail.com
- * @LastEditTime: 2025-05-01 19:04:41
+ * @LastEditTime: 2025-05-01 23:40:08
  * @FilePath: /sbng_cake/shareholder_services/src/safe_walltes/safe_walltes.service.ts
  * @Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查看配置 进行设置: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
  */
@@ -40,7 +40,6 @@ import { Hex } from 'src/common/interfaces';
 export class SafeWalletssService implements OnModuleInit {
   private readonly logger = new Logger(SafeWalletssService.name); // 添加 Logger 实例
   private safeClient: SafeClient;
-  private protocolKit: Safe;
   private safeApiKit: SafeApiKit;
   private isInitialized = false;
   private isApiInitialized = false;

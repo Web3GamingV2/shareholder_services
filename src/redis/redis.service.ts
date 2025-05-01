@@ -2,17 +2,20 @@
  * @Author: leelongxi leelongxi@foxmail.com
  * @Date: 2025-04-20 14:14:42
  * @LastEditors: leelongxi leelongxi@foxmail.com
- * @LastEditTime: 2025-04-29 22:36:47
+ * @LastEditTime: 2025-05-01 23:42:55
  * @FilePath: /sbng_cake/shareholder_services/src/redis/redis.service.ts
  * @Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查看配置 进行设置: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
  */
+// import * as lodash from 'lodash-es';
 import { Injectable, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Redis, SetCommandOptions } from '@upstash/redis';
+import { tryJsonStringify } from 'src/common/utils';
 
 @Injectable()
 export class RedisService implements OnModuleInit, OnModuleDestroy {
   private redisClient: Redis;
+  private isInitialized = false;
 
   public getClient() {
     return this.redisClient;
@@ -21,21 +24,26 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
   constructor(private configService: ConfigService) {}
 
   onModuleInit() {
-    return;
-    const redisUrl = this.configService.get<string>('UPSTASH_REDIS_REST_URL');
-    const redisToken = this.configService.get<string>(
-      'UPSTASH_REDIS_REST_TOKEN',
-    );
+    try {
+      const redisUrl = this.configService.get<string>('UPSTASH_REDIS_REST_URL');
+      const redisToken = this.configService.get<string>(
+        'UPSTASH_REDIS_REST_TOKEN',
+      );
 
-    if (!redisUrl || !redisToken) {
-      throw new Error('Upstash Redis URL or Token not configured.');
+      if (!redisUrl || !redisToken) {
+        throw new Error('Upstash Redis URL or Token not configured.');
+      }
+
+      this.redisClient = new Redis({
+        url: redisUrl,
+        token: redisToken,
+      });
+
+      this.isInitialized = true;
+    } catch (err) {
+      console.log(err);
+      this.isInitialized = false;
     }
-
-    this.redisClient = new Redis({
-      url: redisUrl,
-      token: redisToken,
-    });
-    console.log('Upstash Redis client initialized.');
   }
 
   /**
@@ -49,9 +57,9 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
     value: string | number | object,
     options?: SetCommandOptions,
   ): Promise<string> {
-    // Upstash Redis SDK v2 might serialize objects automatically, check documentation if needed
+    this.ensureInitialized();
     const valueToStore =
-      typeof value === 'object' ? JSON.stringify(value) : String(value);
+      typeof value === 'object' ? tryJsonStringify(value) : String(value);
     return this.redisClient.set(key, valueToStore, options);
   }
 
@@ -61,7 +69,7 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
    * @returns 返回键对应的值，如果键不存在则返回 null。
    */
   async get<T = string>(key: string): Promise<T | null> {
-    // Type assertion might be needed based on expected data type
+    this.ensureInitialized();
     return this.redisClient.get<T>(key);
   }
 
@@ -71,6 +79,7 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
    * @returns 返回成功删除的键的数量。
    */
   async del(...keys: string[]): Promise<number> {
+    this.ensureInitialized();
     if (keys.length === 0) {
       return 0;
     }
@@ -83,8 +92,18 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
    * @returns 返回键对应的值，如果键不存在则返回 null。
    */
   async getdel<T = string>(key: string): Promise<T | null> {
-    // Type assertion might be needed
+    this.ensureInitialized();
     return this.redisClient.getdel<T>(key);
+  }
+
+  private ensureInitialized() {
+    if (!this.ensureInitialized) {
+      if (!this.isInitialized) {
+        throw new Error(
+          'RedisService is not initialized. Check API Key configuration and logs.',
+        );
+      }
+    }
   }
 
   onModuleDestroy() {
