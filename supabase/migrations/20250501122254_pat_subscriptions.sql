@@ -1,3 +1,6 @@
+-- 确保 moddatetime 扩展已启用
+CREATE EXTENSION IF NOT EXISTS moddatetime WITH SCHEMA extensions;
+-- 创建 pat_subscriptions 表
 create table pat_subscriptions (
   id uuid primary key default gen_random_uuid(),
 
