@@ -53,6 +53,7 @@
     "graphql-request": "^7.1.2",
     "joi": "^17.13.3",
     "jsonwebtoken": "^9.0.2",
+    "lodash-es": "^4.17.21",
     "maticjs‑ethers": "link:@maticnetwork/maticjs‑ethers",
     "moralis": "^2.27.2",
     "passport": "^0.7.0",

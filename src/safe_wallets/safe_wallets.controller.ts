@@ -2,7 +2,7 @@
  * @Author: leelongxi leelongxi@foxmail.com
  * @Date: 2025-04-23 14:05:46
  * @LastEditors: leelongxi leelongxi@foxmail.com
- * @LastEditTime: 2025-05-01 15:55:14
+ * @LastEditTime: 2025-05-01 19:21:51
  * @FilePath: /sbng_cake/shareholder_services/src/safe_wallets/safe_wallets.controller.ts
  * @Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查看配置 进行设置: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
  */
@@ -19,8 +19,6 @@ import { Interface } from 'ethers';
 import { SafeWalletssService } from './safe_wallets.service';
 import { BaseController, BaseResponse } from 'src/common/base';
 import { Public } from 'src/common/decorators/public.decorator';
-import { SAFE_ADDRESS } from 'src/common/constants/safeWallet';
-import { Hex } from 'src/common/interfaces';
 import { TransactionDto } from 'src/common/dtos/transaction.dto';
 import { SafeMultisigTransactionListResponse } from '@safe-global/api-kit';
 
@@ -40,15 +38,13 @@ export class SafeWalletsController extends BaseController {
     console.log('Received request to create transaction.', transactionDto);
     try {
       // 1. 定义 ABI
-      const patAbi = [
-        // 'function setMultiSigWallet(address _multiSigWallet) external',
-        transactionDto.functionAbi,
-      ];
+      const patAbi = [transactionDto.functionAbi];
       const iface = new Interface(patAbi);
+      const functionArgs = transactionDto.functionArgs;
       // 2. 使用 viem 编码函数调用数据
       const encodedCallData = iface.encodeFunctionData(
         transactionDto.functionName,
-        [SAFE_ADDRESS as Hex],
+        functionArgs,
       );
       const safeTxHash = await this.safeWalletssService.proposeTransaction(
         encodedCallData,
