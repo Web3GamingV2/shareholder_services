@@ -2,7 +2,7 @@
  * @Author: leelongxi leelongxi@foxmail.com
  * @Date: 2025-05-02 12:25:56
  * @LastEditors: leelongxi leelongxi@foxmail.com
- * @LastEditTime: 2025-05-02 12:55:31
+ * @LastEditTime: 2025-05-02 15:34:02
  * @FilePath: /shareholder_services/src/pat_subscriptions/pat_subscriptions.service.ts
  * @Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查看配置 进行设置: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
  */
@@ -23,6 +23,10 @@ import { createVerificationId } from 'src/common/utils';
 
 @Injectable()
 export class PatSubscriptionsService {
+  get contractsCaller() {
+    return this.contractsCallerService;
+  }
+
   constructor(
     private readonly contractsCallerService: ContractsCallerService,
     private readonly supabaseService: SupabaseService,

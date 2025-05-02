@@ -1,4 +1,9 @@
-import { Injectable, OnModuleInit, Logger } from '@nestjs/common';
+import {
+  Injectable,
+  OnModuleInit,
+  Logger,
+  PlainLiteralObject,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import Moralis from 'moralis';
 // Import necessary types from Moralis SDK if needed for specific functions
@@ -81,8 +86,8 @@ export class MoralisService implements OnModuleInit {
   async runContractFunction(
     contractAddress: string,
     functionName: string,
-    abi: any,
-    params: any,
+    abi: unknown[],
+    params: PlainLiteralObject,
     chain: string,
   ) {
     this.ensureInitialized();
