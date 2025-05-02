@@ -12,8 +12,6 @@ export class MoralisService implements OnModuleInit {
   constructor(private configService: ConfigService) {}
 
   async onModuleInit() {
-    return;
-
     if (Moralis.Core.isStarted) {
       this.logger.log('Moralis SDK is already initialized.');
       return;
@@ -28,7 +26,6 @@ export class MoralisService implements OnModuleInit {
     }
 
     try {
-      console.log('Moralis API Key:', apiKey); // Log the API key for diagnostic
       await Moralis.start({
         apiKey: apiKey,
       });
