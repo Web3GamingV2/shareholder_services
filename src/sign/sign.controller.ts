@@ -2,7 +2,7 @@
  * @Author: leelongxi leelongxi@foxmail.com
  * @Date: 2025-04-22 14:59:07
  * @LastEditors: leelongxi leelongxi@foxmail.com
- * @LastEditTime: 2025-05-01 23:57:50
+ * @LastEditTime: 2025-05-02 12:04:03
  * @FilePath: /shareholder_services/src/sign/sign.controller.ts
  * @Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查看配置 进行设置: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
  */
@@ -73,9 +73,8 @@ export class SignController extends BaseController {
     @Body() body: VerifySiweDto, // 使用 DTO 接收和验证请求体
   ): Promise<BaseResponse<{ verified: boolean; address?: string }>> {
     try {
+      console.log('Received request to verify SIWE signature:', body);
       const { message, signature } = body;
-      // 调用 Service 层的方法，它现在可能抛出 HttpException
-      // Service 层成功时会返回 BaseResponse 格式
       const result = await this.signService.verifySiweSignature(
         message,
         signature,
