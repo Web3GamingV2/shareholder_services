@@ -9,7 +9,7 @@
 import { Inject, Injectable, OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
-import { MemoryCacheService } from 'src/memory-cache/memory-cache.service';
+import { MemoryCacheService } from 'src/memory_cache/memory-cache.service';
 
 @Injectable()
 export class SupabaseService implements OnModuleInit {

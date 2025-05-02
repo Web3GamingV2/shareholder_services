@@ -2,7 +2,7 @@
  * @Author: leelongxi leelongxi@foxmail.com
  * @Date: 2025-04-22 14:58:31
  * @LastEditors: leelongxi leelongxi@foxmail.com
- * @LastEditTime: 2025-05-02 12:05:38
+ * @LastEditTime: 2025-05-02 12:53:55
  * @FilePath: /sbng_cake/shareholder_services/src/sign/sign.service.ts
  * @Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查看配置 进行设置: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
  */
@@ -14,6 +14,7 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import { generateNonce, SiweMessage, SiweResponse } from 'siwe';
+import { createVerificationId } from 'src/common/utils';
 import { RedisService } from 'src/redis/redis.service';
 
 @Injectable()
@@ -44,7 +45,7 @@ export class SignService {
   ): Promise<{ verified: boolean; address: string }> {
     let siweMessage: SiweMessage;
     let userAddress = '';
-
+    const verificationTTL = 300; // 5 minutes in seconds
     try {
       siweMessage = new SiweMessage(message);
       userAddress = siweMessage.address.toLowerCase();
@@ -64,6 +65,17 @@ export class SignService {
       const siweResponse: SiweResponse = await siweMessage.verify({
         signature,
       });
+
+      if (!siweResponse.success) {
+        throw new UnauthorizedException('验证失败：签名无效。');
+      } else {
+        await this.redisService.set(createVerificationId(userAddress), 'true', {
+          ex: verificationTTL,
+        });
+        console.log(
+          `Address ${userAddress} marked as verified in Redis for ${verificationTTL} seconds.`,
+        );
+      }
       return { verified: siweResponse.success, address: userAddress };
     } catch (error) {
       if (userAddress) {

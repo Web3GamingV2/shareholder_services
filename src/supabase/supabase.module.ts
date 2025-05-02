@@ -9,7 +9,7 @@
 import { Module } from '@nestjs/common';
 import { SupabaseService } from './supabase.service';
 import { CacheModule } from 'src/cache/cache.module';
-import { MemoryCacheModule } from 'src/memory-cache/memory-cache.module';
+import { MemoryCacheModule } from 'src/memory_cache/memory-cache.module';
 
 @Module({
   imports: [CacheModule, MemoryCacheModule],
