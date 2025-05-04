@@ -2,7 +2,7 @@
  * @Author: leelongxi leelongxi@foxmail.com
  * @Date: 2025-05-02 12:25:56
  * @LastEditors: leelongxi leelongxi@foxmail.com
- * @LastEditTime: 2025-05-02 15:34:02
+ * @LastEditTime: 2025-05-04 05:20:29
  * @FilePath: /shareholder_services/src/pat_subscriptions/pat_subscriptions.service.ts
  * @Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查看配置 进行设置: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
  */
@@ -119,8 +119,6 @@ export class PatSubscriptionsService {
       status: initialStatus,
       tier: tier,
       forward_tx_hash: forwardTxHash, // 存储合约交易哈希
-      // expire_at 由数据库触发器自动设置
-      // created_at, updated_at 由数据库自动设置
     };
 
     // 4. 将申购记录插入数据库

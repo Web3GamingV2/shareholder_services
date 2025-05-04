@@ -2,13 +2,16 @@
  * @Author: leelongxi leelongxi@foxmail.com
  * @Date: 2025-04-24 14:26:18
  * @LastEditors: leelongxi leelongxi@foxmail.com
- * @LastEditTime: 2025-04-24 15:46:14
+ * @LastEditTime: 2025-05-04 13:18:46
  * @FilePath: /sbng_cake/shareholder_services/src/the-graph/the-graph.controller.ts
  * @Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查看配置 进行设置: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
  */
 import { Controller, Get, Logger, Param } from '@nestjs/common';
 import { BaseController, BaseResponse } from 'src/common/base';
-import { MultiSigWalletAdressChanged } from './the-graph.interface';
+import {
+  MultiSigWalletAdressChanged,
+  SubscriptionRequestEvent,
+} from './the-graph.interface';
 import { TheGraphService } from './the-graph.service';
 import { Public } from 'src/common/decorators/public.decorator';
 
@@ -64,6 +67,33 @@ export class TheGraphController extends BaseController {
       );
       // 如果是 NotFoundException，重新抛出，让 NestJS 处理
       // 对于其他错误，使用 BaseController 的 error 方法
+      return this.error(`Failed to fetch data: ${error.message}`);
+    }
+  }
+
+  // 新增端点获取 SubscriptionRequestEvent
+  @Get('subscription-by-usdt')
+  @Public()
+  async getSubscriptionByUsdtGql(): Promise<
+    BaseResponse<SubscriptionRequestEvent[]>
+  > {
+    this.logger.log('Received request to get subscription request events.');
+    try {
+      const events = await this.theGraphService.getSubscriptionByUsdtGql({
+        where: {
+          transactionHash:
+            '0x95345c6340c347bcd57670737a2fdc2ab2048743e5aff05ee55782bd3fcf3671',
+        },
+      });
+      this.logger.log(
+        `Returning ${events.length} subscription request events.`,
+      );
+      return this.success(events);
+    } catch (error) {
+      this.logger.error(
+        `Failed to get subscription request events: ${error.message}`,
+        error.stack,
+      );
       return this.error(`Failed to fetch data: ${error.message}`);
     }
   }
