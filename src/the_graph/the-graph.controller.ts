@@ -2,7 +2,7 @@
  * @Author: leelongxi leelongxi@foxmail.com
  * @Date: 2025-04-24 14:26:18
  * @LastEditors: leelongxi leelongxi@foxmail.com
- * @LastEditTime: 2025-05-04 13:18:46
+ * @LastEditTime: 2025-05-05 18:05:27
  * @FilePath: /sbng_cake/shareholder_services/src/the-graph/the-graph.controller.ts
  * @Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查看配置 进行设置: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
  */
@@ -80,10 +80,10 @@ export class TheGraphController extends BaseController {
     this.logger.log('Received request to get subscription request events.');
     try {
       const events = await this.theGraphService.getSubscriptionByUsdtGql({
-        where: {
-          transactionHash:
-            '0x95345c6340c347bcd57670737a2fdc2ab2048743e5aff05ee55782bd3fcf3671',
-        },
+        // where: {
+        //   transactionHash:
+        //     '0x95345c6340c347bcd57670737a2fdc2ab2048743e5aff05ee55782bd3fcf3671',
+        // },
       });
       this.logger.log(
         `Returning ${events.length} subscription request events.`,
