@@ -122,6 +122,9 @@ importers:
       passport-jwt:
         specifier: ^4.0.1
         version: 4.0.1
+      pinata:
+        specifier: ^2.2.1
+        version: 2.2.1
       reflect-metadata:
         specifier: ^0.1.13
         version: 0.1.14
@@ -3085,6 +3088,10 @@ packages:
   picomatch@4.0.1:
     resolution: {integrity: sha512-xUXwsxNjwTQ8K3GnT4pCJm+xq3RUPQbmkYJTP5aFIfNIvbcc/4MUxgBaaRSZJ6yGJZiGSyYlM6MzwTsRk8SYCg==}
     engines: {node: '>=12'}
+
+  pinata@2.2.1:
+    resolution: {integrity: sha512-GQi5pxyvIuRVF+PY4d/pc4tQQemxyyt2mfR/HznXY3ATDs1zEgc0ENrTf7uUl6DkElteuUVudeAOPZCvq6pbbw==}
+    engines: {node: '>=20'}
 
   pirates@4.0.7:
     resolution: {integrity: sha512-TfySrs/5nm8fQJDcBDuUng3VOUKsd7S+zqvbOTiGXHfxX4wK31ard+hoNuvkicM/2YFzlpDgABOevKSsB4G/FA==}
@@ -7551,6 +7558,8 @@ snapshots:
   picomatch@2.3.1: {}
 
   picomatch@4.0.1: {}
+
+  pinata@2.2.1: {}
 
   pirates@4.0.7: {}
 
