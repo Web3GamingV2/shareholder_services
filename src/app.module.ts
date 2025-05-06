@@ -35,6 +35,8 @@ import { MemoryCacheModule } from './memory_cache/memory-cache.module';
 import { PatSubscriptionsModule } from './pat_subscriptions/pat_subscriptions.module';
 import { ContractsCallerModule } from './contracts_caller/contracts_caller.module';
 import { PinataModule } from './pinata/pinata.module';
+import { MetadataModule } from './metadata/metadata.module';
+import { ChainlinkFuncModule } from './chainlink-func/chainlink-func.module';
 
 const envFilePath = [`.env.${process.env.NODE_ENV || 'development'}`, '.env'];
 
@@ -75,6 +77,8 @@ const envFilePath = [`.env.${process.env.NODE_ENV || 'development'}`, '.env'];
     PatSubscriptionsModule,
     ContractsCallerModule,
     PinataModule,
+    MetadataModule,
+    ChainlinkFuncModule,
   ],
   controllers: [AppController, InviteController],
   providers: [

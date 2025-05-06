@@ -3,7 +3,7 @@
  * @Author: leelongxi leelongxi@foxmail.com
  * @Date: 2025-04-21 22:38:14
  * @LastEditors: leelongxi leelongxi@foxmail.com
- * @LastEditTime: 2025-05-04 13:17:52
+ * @LastEditTime: 2025-05-07 07:27:49
  * @FilePath: /sbng_cake/shareholder_services/src/the-graph/the-graph.service.ts
  * @Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查看配置 进行设置: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
  */
@@ -14,6 +14,7 @@ import {
   GraphQLClient,
   SubscriptionRequestEvent,
   SubscriptionRequestVariables,
+  MintProofEvent,
 } from './the-graph.interface';
 import { InjectGraphQLClient } from '@golevelup/nestjs-graphql-request';
 import {
@@ -135,5 +136,12 @@ export class TheGraphService implements OnModuleInit {
         'Failed to fetch subscription request events from The Graph subgraph.',
       );
     }
+  }
+
+  async getMintProofEvents(
+    variables?: SubscriptionRequestVariables,
+  ): Promise<MintProofEvent[]> {
+    console.log('getMintProofEvents', variables);
+    return [];
   }
 }

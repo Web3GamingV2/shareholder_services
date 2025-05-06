@@ -4,7 +4,7 @@ import { PlainLiteralObject } from '@nestjs/common';
  * @Author: leelongxi leelongxi@foxmail.com
  * @Date: 2025-04-24 12:18:40
  * @LastEditors: leelongxi leelongxi@foxmail.com
- * @LastEditTime: 2025-05-04 13:17:49
+ * @LastEditTime: 2025-05-07 07:35:07
  * @FilePath: /sbng_cake/shareholder_services/src/the-graph/the-graph.interface.ts
  * @Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查看配置 进行设置: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
  */
@@ -51,4 +51,14 @@ export interface SubscriptionRequestVariables extends Record<string, unknown> {
   orderBy?: string; // 或者更具体的枚举类型 e.g., 'blockTimestamp' | 'usdtAmount'
   orderDirection?: 'asc' | 'desc';
   where?: Record<string, any>; // 定义更具体的过滤条件类型 e.g., { user?: string; expiryTimestamp_gt?: string }
+}
+
+export interface MintProofEvent extends PlainLiteralObject {
+  blockNumber: string;
+  blockTimestamp: string;
+  id: string;
+}
+
+export interface MintProofEventsResponse {
+  mintProofEvents: MintProofEvent[];
 }
