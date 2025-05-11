@@ -1,4 +1,13 @@
+/*
+ * @Author: leelongxi leelongxi@foxmail.com
+ * @Date: 2025-05-06 20:32:24
+ * @LastEditors: leelongxi leelongxi@foxmail.com
+ * @LastEditTime: 2025-05-11 17:15:35
+ * @FilePath: /shareholder_services/src/metadata/metadata.service.ts
+ * @Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查看配置 进行设置: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
+ */
 import { Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { tryJsonParse } from 'src/common/utils';
 import { PinataService } from 'src/pinata/pinata.service';
 import { SupabaseService } from 'src/supabase/supabase.service';
 import { TheGraphService } from 'src/the_graph/the-graph.service';
@@ -48,22 +57,22 @@ export class MetadataService {
 
       // 获取最新的 MintProof 事件
       const latestEvent = mintProofEvents[0];
-
+      const data = latestEvent.data;
+      const parseData = tryJsonParse(data);
       // 构建元数据
       const metadata = {
         name: `Shareholder NFT #${tokenId}`,
         description: '股东权益 NFT，代表持有者的股东身份和权益',
-        // pinata 上传的 json 链接
         image:
           'https://teal-gigantic-bison-996.mypinata.cloud/ipfs/bafkreifpsa4hhi5ez3ccxtktdz2xgzwnn7xamziyigfoxvh5fh2wpfdmue',
         attributes: [
           {
             trait_type: 'Round',
-            value: latestEvent.round || 1,
+            value: parseData.round || 1,
           },
           {
             trait_type: 'Amount',
-            value: latestEvent.amount || 0,
+            value: parseData.amount || 0,
           },
         ],
         properties: {
