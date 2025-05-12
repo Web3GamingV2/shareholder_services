@@ -2,7 +2,7 @@
  * @Author: leelongxi leelongxi@foxmail.com
  * @Date: 2025-05-06 20:32:32
  * @LastEditors: leelongxi leelongxi@foxmail.com
- * @LastEditTime: 2025-05-12 10:49:31
+ * @LastEditTime: 2025-05-12 11:21:28
  * @FilePath: /shareholder_services/src/metadata/metadata.controller.ts
  * @Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查看配置 进行设置: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
  */
@@ -36,11 +36,7 @@ export class MetadataController extends BaseController {
   @Public()
   async getNftMetadata(@Param('id') id: string) {
     try {
-      const tokenId = parseInt(id, 10);
-
-      if (isNaN(tokenId)) {
-        throw new NotFoundException('无效的 token ID');
-      }
+      const tokenId = id;
 
       this.logger.log(`收到 token ID ${tokenId} 的元数据请求`);
       return await this.metadataService.getNftMetadataFromGraphNgrok(tokenId);
@@ -54,7 +50,8 @@ export class MetadataController extends BaseController {
         return {
           name: `Unknown NFT #${id}`,
           description: '未找到此 NFT 的元数据',
-          image: 'https://example.com/not-found.png',
+          image:
+            'https://teal-gigantic-bison-996.mypinata.cloud/ipfs/bafkreifpsa4hhi5ez3ccxtktdz2xgzwnn7xamziyigfoxvh5fh2wpfdmue',
         };
       }
 
