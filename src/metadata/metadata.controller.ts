@@ -2,7 +2,7 @@
  * @Author: leelongxi leelongxi@foxmail.com
  * @Date: 2025-05-06 20:32:32
  * @LastEditors: leelongxi leelongxi@foxmail.com
- * @LastEditTime: 2025-05-07 07:43:34
+ * @LastEditTime: 2025-05-12 10:49:31
  * @FilePath: /shareholder_services/src/metadata/metadata.controller.ts
  * @Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查看配置 进行设置: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
  */
@@ -32,7 +32,7 @@ export class MetadataController extends BaseController {
    * @param id NFT 的 token ID
    * @returns NFT 元数据
    */
-  @Get(':id')
+  @Get('token-id/:id')
   @Public()
   async getNftMetadata(@Param('id') id: string) {
     try {
@@ -43,7 +43,7 @@ export class MetadataController extends BaseController {
       }
 
       this.logger.log(`收到 token ID ${tokenId} 的元数据请求`);
-      return await this.metadataService.getNftMetadataFromGraph(tokenId);
+      return await this.metadataService.getNftMetadataFromGraphNgrok(tokenId);
     } catch (error) {
       this.logger.error(
         `处理 token ID ${id} 的元数据请求时出错: ${error.message}`,

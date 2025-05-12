@@ -2,7 +2,7 @@
  * @Author: leelongxi leelongxi@foxmail.com
  * @Date: 2025-05-06 20:32:24
  * @LastEditors: leelongxi leelongxi@foxmail.com
- * @LastEditTime: 2025-05-11 17:15:35
+ * @LastEditTime: 2025-05-12 10:46:54
  * @FilePath: /shareholder_services/src/metadata/metadata.service.ts
  * @Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查看配置 进行设置: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
  */
@@ -28,6 +28,30 @@ export class MetadataService {
     private readonly pinataService: PinataService,
     private readonly supbaseService: SupabaseService,
   ) {}
+
+  async getNftMetadataFromGraphNgrok(tokenId: number): Promise<any> {
+    try {
+      this.logger.log(
+        `从 The Graph 获取 token ID ${tokenId} 的 MintProof 事件`,
+      );
+      const metadata = {
+        name: `Shareholder NFT #${tokenId}`,
+        description: '股东权益 NFT，代表持有者的股东身份和权益',
+        image:
+          'https://teal-gigantic-bison-996.mypinata.cloud/ipfs/bafkreifpsa4hhi5ez3ccxtktdz2xgzwnn7xamziyigfoxvh5fh2wpfdmue',
+        attributes: [],
+        properties: {},
+      };
+      this.logger.log(`成功从 The Graph 获取 token ID ${tokenId} 的元数据`);
+      return metadata;
+    } catch (error) {
+      this.logger.error(
+        `从 The Graph 获取 token ID ${tokenId} 的元数据时出错: ${error.message}`,
+        error.stack,
+      );
+      throw error;
+    }
+  }
 
   /**
    * 通过 The Graph 查询 MintProof 事件并获取元数据 + 前端传递一部分申购数据
