@@ -2,7 +2,7 @@
  * @Author: leelongxi leelongxi@foxmail.com
  * @Date: 2025-04-22 14:59:07
  * @LastEditors: leelongxi leelongxi@foxmail.com
- * @LastEditTime: 2025-05-02 12:04:03
+ * @LastEditTime: 2025-05-16 11:02:44
  * @FilePath: /shareholder_services/src/sign/sign.controller.ts
  * @Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查看配置 进行设置: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
  */
@@ -21,6 +21,7 @@ import { BaseController, BaseResponse } from 'src/common/base';
 import { SignService } from './sign.service';
 import { GetNonceDto, VerifySiweDto } from 'src/common/dtos/sign.dto';
 import { Public } from 'src/common/decorators/public.decorator';
+import { RateLimit } from 'src/common/decorators/rate-limiter.decorator';
 
 @Controller('sign')
 export class SignController extends BaseController {
@@ -36,6 +37,12 @@ export class SignController extends BaseController {
    */
   @Get('nonce')
   @Public()
+  @RateLimit({
+    keyPrefix: 'getNonce',
+    limit: 5,
+    windowInSeconds: 60,
+    useIp: true,
+  })
   @UsePipes(new ValidationPipe({ transform: true, whitelist: true })) // 应用验证管道
   async getNonce(
     @Query() query: GetNonceDto, // 使用 DTO 接收和验证查询参数
@@ -68,6 +75,14 @@ export class SignController extends BaseController {
    */
   @Post('verify') // 定义 POST 路由
   @Public()
+  @RateLimit({
+    keyPrefix: 'verifySiwe',
+    limit: 10,
+    windowInSeconds: 60,
+    useIp: true,
+    useAddress: true,
+    addressPath: 'body.message.address', // 确保 VerifySiweDto 中的 message 对象有 address 字段
+  })
   @UsePipes(new ValidationPipe({ transform: true, whitelist: true })) // 应用验证管道
   async verifySiweSignature(
     @Body() body: VerifySiweDto, // 使用 DTO 接收和验证请求体

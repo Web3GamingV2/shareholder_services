@@ -2,7 +2,7 @@
  * @Author: leelongxi leelongxi@foxmail.com
  * @Date: 2025-04-20 14:14:42
  * @LastEditors: leelongxi leelongxi@foxmail.com
- * @LastEditTime: 2025-05-01 23:42:55
+ * @LastEditTime: 2025-05-16 10:58:35
  * @FilePath: /sbng_cake/shareholder_services/src/redis/redis.service.ts
  * @Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查看配置 进行设置: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
  */
@@ -94,6 +94,29 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
   async getdel<T = string>(key: string): Promise<T | null> {
     this.ensureInitialized();
     return this.redisClient.getdel<T>(key);
+  }
+
+  /**
+   * 基于时间窗口的速率限制。
+   * @param key 用于限流的唯一标识符 (例如 IP 地址或用户 ID)
+   * @param limit 在时间窗口内允许的最大请求数
+   * @param windowInSeconds 时间窗口大小 (秒)
+   * @returns 如果请求未超过限制则返回 true，否则返回 false
+   */
+  async rateLimit(
+    key: string,
+    limit: number,
+    windowInSeconds: number,
+  ): Promise<boolean> {
+    this.ensureInitialized();
+    const currentCount = await this.redisClient.incr(key);
+
+    if (currentCount === 1) {
+      // 如果是第一次请求，设置过期时间
+      await this.redisClient.expire(key, windowInSeconds);
+    }
+
+    return currentCount <= limit;
   }
 
   private ensureInitialized() {
