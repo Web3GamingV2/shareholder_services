@@ -37,6 +37,7 @@ import { ContractsCallerModule } from './contracts_caller/contracts_caller.modul
 import { PinataModule } from './pinata/pinata.module';
 import { MetadataModule } from './metadata/metadata.module';
 import { ChainlinkFuncModule } from './chainlink-func/chainlink-func.module';
+import { AirdropModule } from './airdrop/airdrop.module';
 
 const envFilePath = [`.env.${process.env.NODE_ENV || 'development'}`, '.env'];
 
@@ -79,6 +80,7 @@ const envFilePath = [`.env.${process.env.NODE_ENV || 'development'}`, '.env'];
     PinataModule,
     MetadataModule,
     ChainlinkFuncModule,
+    AirdropModule,
   ],
   controllers: [AppController, InviteController],
   providers: [
